@@ -7,7 +7,9 @@ const {
   uploadCardImage,
   getCardImages,
   deleteCardImage,
-  postCardDetails
+  postCardDetails,
+  getCards,
+  deleteCardDetails
 } = require("../controllers/adminController");
 const authenticate = require("../middleware/authentication");
 
@@ -36,6 +38,7 @@ const upload = multer({ storage: storage, fileFilter: fileFilter });
 
 router.get("/login", adminLogin);
 router.get("/getCardImages", authenticate, getCardImages);
+router.get("/getCards",authenticate,getCards)
 
 router.post("/signUp", adminSignUp);
 router.post(
@@ -48,5 +51,5 @@ router.post("/postCardDetails",authenticate,postCardDetails)
 
 
 router.delete("/deleteCardImage",authenticate,deleteCardImage)
-
+router.delete("/deleteCardDetails",authenticate,deleteCardDetails)
 module.exports = router;

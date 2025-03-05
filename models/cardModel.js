@@ -36,6 +36,10 @@ const cardSchema = new mongoose.Schema({
   status:{
     type:Boolean,
     default:false
+  },
+  isDelete:{
+    type:Boolean,
+    default:false
   }
 },{
     timestamps:true

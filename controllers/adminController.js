@@ -155,16 +155,27 @@ async function postCardDetails(req, res) {
       premium,
       cardImageId,
     } = req.body;
-    const cardDetails = await Cards.exists({
-      $or: [{ name: cardName }, { cardId }].filter(Boolean),
-    });
-console.log(cardDetails,"oooh");
-
-    if(cardDetails){
-      return res.status(404).json({
-        isSuccess:false,
-        message:"The card is exist in the database!!"
-      })
+    let cardDetails = await Cards.find({ isDelete: false });
+    if (cardDetails.length > 0) {
+      if (
+        cardDetails.filter((card) => card.endDate > new Date(startDate))
+          .length > 0
+      ) {
+        return res.status(404).json({
+          isSuccess: false,
+          message: "The start date must be greater than the end date of the most recent card.!",
+        });
+      }
+      if (
+        cardDetails.filter(
+          (card) => card.name === cardName || card.cardId === cardId
+        ).length > 0
+      ) {
+        return res.status(404).json({
+          isSuccess: false,
+          message: "The card is already stored with name or card Id !!",
+        });
+      }
     }
     await Cards.create({
       name: cardName,
@@ -189,6 +200,56 @@ console.log(cardDetails,"oooh");
   }
 }
 
+// function to fetch cards
+
+async function getCards(req, res) {
+  try {
+    const response = await Cards.find({ isDelete: false }).populate("image");
+    if (response) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Cards fetched Successfully",
+        data: response,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function deleteCardDetails(req, res) {
+  try {
+    const { cardid } = req.headers;
+    const response = await Cards.updateOne(
+      { _id: cardid },
+      { $set: { isDelete: true } }
+    );
+    console.log(response, "res");
+
+    if (response && response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Card deleted successfully",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Card not found",
+      });
+    }
+  } catch (error) {
+    console.error(`Error deleting card with ID ${cardid}:`, error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   adminSignUp,
   adminLogin,
@@ -196,4 +257,6 @@ module.exports = {
   getCardImages,
   deleteCardImage,
   postCardDetails,
+  getCards,
+  deleteCardDetails,
 };
