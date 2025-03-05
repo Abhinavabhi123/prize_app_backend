@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 
-const gameSchema = new mongoose.Schema({
+const cardSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
   },
-  gameId: {
+  cardId: {
     type: String,
     required: true,
   },
@@ -17,31 +17,30 @@ const gameSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  entryPrice: {
-    type: Number,
-    required: true,
-  },
   priceMoney: {
     type: Number,
     default: 0,
   },
-  priceGift: {
-    priceName: {
-      type: String,
-    },
-    priceDescription: {
-      type: String,
-    },
-    priceImage: [String],
-  },
-  premiumAmount: {
+  premium: {
     type: Number,
     required: true,
   },
+  image:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref:"CardImage"
+  },
+  completed:{
+    type:Boolean,
+    default:false
+  },
+  status:{
+    type:Boolean,
+    default:false
+  }
 },{
     timestamps:true
 }
 );
 
 
-module.exports = mongoose.model("Game",gameSchema);
+module.exports = mongoose.model("Card",cardSchema);

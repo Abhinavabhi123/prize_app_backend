@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    user_name: {
+    name: {
       type: String,
       required: true,
     },
@@ -14,11 +14,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: Number,
-      require: true,
     },
     mobile: {
       type: Number,
-      required: true,
     },
     wallet: {
       type: Number,
@@ -28,9 +26,12 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    picture:{
+        type:String,
+    },
     access: {
-      type: String,
-      default: "active",
+      type: Boolean,
+      default: true,
     },
     games_participated: [
       {
@@ -38,7 +39,10 @@ const userSchema = new mongoose.Schema(
         user_game_id: { type: String },
       },
     ],
-    isVerified: false,
+    isVerified: {
+      type:Boolean,
+      default:false
+    },
   },
   {
     timestamps: true,
