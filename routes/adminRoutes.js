@@ -9,7 +9,13 @@ const {
   deleteCardImage,
   postCardDetails,
   getCards,
-  deleteCardDetails
+  deleteCardDetails,
+  activateCard,
+  postArtDetails,
+  getArts,
+  editArtDetails,
+  editArtWithImage,
+  deleteArtDetails
 } = require("../controllers/adminController");
 const authenticate = require("../middleware/authentication");
 
@@ -18,6 +24,14 @@ const router = express.Router();
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const artStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/arts");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -35,11 +49,15 @@ const fileFilter = (req, file, cb) => {
 
 // Multer upload middleware
 const upload = multer({ storage: storage, fileFilter: fileFilter });
+const artUpload = multer({ storage: artStorage, fileFilter: fileFilter });
 
+// !get methods
 router.get("/login", adminLogin);
 router.get("/getCardImages", authenticate, getCardImages);
-router.get("/getCards",authenticate,getCards)
+router.get("/getCards", authenticate, getCards);
+router.get("/getArts", authenticate, getArts);
 
+// !post methods
 router.post("/signUp", adminSignUp);
 router.post(
   "/uploadCardImage",
@@ -47,9 +65,28 @@ router.post(
   upload.single("image"),
   uploadCardImage
 );
-router.post("/postCardDetails",authenticate,postCardDetails)
+router.post("/postCardDetails", authenticate, postCardDetails);
+router.post(
+  "/postArtDetails",
+  authenticate,
+  artUpload.single("image"),
+  postArtDetails
+);
 
+// !put methods
+router.put("/activateCard", authenticate, activateCard);
+router.put("/deleteArtDetails",authenticate,deleteArtDetails)
 
-router.delete("/deleteCardImage",authenticate,deleteCardImage)
-router.delete("/deleteCardDetails",authenticate,deleteCardDetails)
+// !patch methods
+router.patch("/editArtDetails", authenticate, editArtDetails);
+router.patch(
+  "/editArtWithImage",
+  authenticate,
+  artUpload.single("image"),
+  editArtWithImage
+);
+
+// !delete Methods
+router.delete("/deleteCardImage", authenticate, deleteCardImage);
+router.delete("/deleteCardDetails", authenticate, deleteCardDetails);
 module.exports = router;

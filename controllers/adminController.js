@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const CardImages = require("../models/cardImgModel");
 const Cards = require("../models/cardModel");
 const JWT_SECRET = process.env.JWT_SECRET;
+const Arts = require("../models/artModel");
 
 const saltValue = 10;
 async function adminSignUp(req, res) {
@@ -163,7 +164,8 @@ async function postCardDetails(req, res) {
       ) {
         return res.status(404).json({
           isSuccess: false,
-          message: "The start date must be greater than the end date of the most recent card.!",
+          message:
+            "The start date must be greater than the end date of the most recent card.!",
         });
       }
       if (
@@ -226,10 +228,8 @@ async function deleteCardDetails(req, res) {
     const { cardid } = req.headers;
     const response = await Cards.updateOne(
       { _id: cardid },
-      { $set: { isDelete: true } }
+      { $set: { isDelete: true, status: false } }
     );
-    console.log(response, "res");
-
     if (response && response.modifiedCount === 1) {
       return res.status(200).json({
         isSuccess: true,
@@ -250,6 +250,245 @@ async function deleteCardDetails(req, res) {
   }
 }
 
+async function activateCard(req, res) {
+  try {
+    const { cardid } = req.headers;
+    const activeCards = await Cards.find({
+      $and: [{ status: true }, { completed: false }],
+    });
+    if (activeCards.length > 0) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "One card is already activated",
+      });
+    }
+    const response = await Cards.updateOne(
+      { _id: cardid },
+      { $set: { status: true } }
+    );
+    if (response && response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Card status changed successfully",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while changing card status",
+      });
+    }
+  } catch (error) {
+    console.error(`Error change status of card with ID ${cardid}:`, error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function for create new art
+async function postArtDetails(req, res) {
+  try {
+    const { name, price, description, question, answer } = req.body;
+    if (!req.file) {
+      return res
+        .status(404)
+        .json({ isSuccess: false, message: "Image file is missing" });
+    }
+    const response = await Arts.create({
+      name,
+      price,
+      description,
+      question,
+      answer,
+      image: req.file.filename,
+      ownerId: req.user.id,
+      ownerModel: "Admin",
+    });
+    if (response) {
+      return res
+        .status(200)
+        .json({ isSuccess: true, message: "Art stored successfully" });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function getArts(req, res) {
+  try {
+    const response = await Arts.find({ isDelete: false }).populate({
+      path: "ownerId",
+      select: "-password -email",
+    });
+    if (response) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Art data fetched successfully",
+        data: response,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// edit art details with out image
+async function editArtDetails(req, res) {
+  try {
+    const { artid } = req.headers;
+
+    if (!artid) {
+      return (
+        res.status(404),
+        json({
+          isSuccess: false,
+          message: "Art id is missing!!",
+        })
+      );
+    }
+    const { name, description, price, question, answer } = req.body;
+    const response = await Arts.updateOne(
+      { _id: artid },
+      {
+        $set: {
+          name,
+          description,
+          price,
+          question,
+          answer,
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Art edited successfully",
+      });
+    } else {
+      return (
+        res.status(404),
+        json({
+          isSuccess: false,
+          message: "Failed to edit art!",
+        })
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to edit art data with image
+async function editArtWithImage(req, res) {
+  try {
+    const { artid } = req.headers;
+
+    if (!artid) {
+      return (
+        res.status(404),
+        json({
+          isSuccess: false,
+          message: "Art id is missing!!",
+        })
+      );
+    }
+    if (!req.file) {
+      return res.status(404).send({
+        isSuccess: false,
+        message: "Art Edit issue while uploading image!",
+      });
+    }
+    const { name, description, price, question, answer } = req.body;
+    const response = await Arts.updateOne(
+      { _id: artid },
+      {
+        $set: {
+          name,
+          description,
+          price,
+          question,
+          answer,
+          image: req.file.filename,
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Art edited successfully",
+      });
+    } else {
+      return (
+        res.status(404),
+        json({
+          isSuccess: false,
+          message: "Failed to edit art!",
+        })
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to delete art data
+async function deleteArtDetails(req, res) {
+  try {
+    const { artid } = req.headers;
+    if (!artid) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The art id is missing",
+      });
+    }
+    const response = await Arts.updateOne(
+      { _id: artid },
+      {
+        $set: {
+          isDelete: true,
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Art deleted successfully",
+      });
+    } else {
+      return (
+        res.status(404),
+        json({
+          isSuccess: false,
+          message: "Failed to delete art!",
+        })
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   adminSignUp,
   adminLogin,
@@ -259,4 +498,10 @@ module.exports = {
   postCardDetails,
   getCards,
   deleteCardDetails,
+  activateCard,
+  postArtDetails,
+  getArts,
+  editArtDetails,
+  editArtWithImage,
+  deleteArtDetails,
 };
