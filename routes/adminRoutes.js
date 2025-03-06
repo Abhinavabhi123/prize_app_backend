@@ -15,9 +15,11 @@ const {
   getArts,
   editArtDetails,
   editArtWithImage,
-  deleteArtDetails
+  deleteArtDetails,
 } = require("../controllers/adminController");
 const authenticate = require("../middleware/authentication");
+const adminValidation = require("../validation/adminValidation");
+const handleValidationErrors = require("../middleware/validationMiddleware");
 
 const router = express.Router();
 // Configure Multer storage
@@ -52,41 +54,82 @@ const upload = multer({ storage: storage, fileFilter: fileFilter });
 const artUpload = multer({ storage: artStorage, fileFilter: fileFilter });
 
 // !get methods
-router.get("/login", adminLogin);
+router.get("/login", adminValidation.login, handleValidationErrors, adminLogin);
 router.get("/getCardImages", authenticate, getCardImages);
 router.get("/getCards", authenticate, getCards);
 router.get("/getArts", authenticate, getArts);
 
 // !post methods
-router.post("/signUp", adminSignUp);
+router.post(
+  "/signUp",
+  adminValidation.signUp,
+  handleValidationErrors,
+  adminSignUp
+);
 router.post(
   "/uploadCardImage",
   authenticate,
   upload.single("image"),
+  adminValidation.uploadCardImage,
+  handleValidationErrors,
   uploadCardImage
 );
-router.post("/postCardDetails", authenticate, postCardDetails);
+router.post(
+  "/postCardDetails",
+  authenticate,
+  adminValidation.createCard,
+  handleValidationErrors,
+  postCardDetails
+);
 router.post(
   "/postArtDetails",
   authenticate,
   artUpload.single("image"),
+  adminValidation.postArt,
+  handleValidationErrors,
   postArtDetails
 );
 
 // !put methods
 router.put("/activateCard", authenticate, activateCard);
-router.put("/deleteArtDetails",authenticate,deleteArtDetails)
+router.put(
+  "/deleteArtDetails",
+  authenticate,
+  adminValidation.deleteArt,
+  handleValidationErrors,
+  deleteArtDetails
+);
 
 // !patch methods
-router.patch("/editArtDetails", authenticate, editArtDetails);
+router.patch(
+  "/editArtDetails",
+  authenticate,
+  adminValidation.editArt,
+  handleValidationErrors,
+  editArtDetails
+);
 router.patch(
   "/editArtWithImage",
   authenticate,
   artUpload.single("image"),
+  adminValidation.editArt,
+  handleValidationErrors,
   editArtWithImage
 );
 
 // !delete Methods
-router.delete("/deleteCardImage", authenticate, deleteCardImage);
-router.delete("/deleteCardDetails", authenticate, deleteCardDetails);
+router.delete(
+  "/deleteCardImage",
+  authenticate,
+  adminValidation.deleteCardImage,
+  handleValidationErrors,
+  deleteCardImage
+);
+router.delete(
+  "/deleteCardDetails",
+  authenticate,
+  adminValidation.deleteCard,
+  handleValidationErrors,
+  deleteCardDetails
+);
 module.exports = router;

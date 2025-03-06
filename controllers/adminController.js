@@ -9,6 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const Arts = require("../models/artModel");
 
 const saltValue = 10;
+
 async function adminSignUp(req, res) {
   try {
     const { email, password } = req.body;
@@ -24,8 +25,7 @@ async function adminSignUp(req, res) {
 
 async function adminLogin(req, res) {
   try {
-    const { data } = req.headers;
-    const { email, password } = JSON.parse(data);
+    const { email, password } = req.headers;
 
     const adminData = await Admin.findOne({ email });
     if (!adminData) {
@@ -54,6 +54,9 @@ async function adminLogin(req, res) {
       .json({ isSuccess: true, message: "Login successful", token });
   } catch (error) {
     console.error(error);
+    res
+      .status(500)
+      .json({ isSuccess: false, message: "Internal Server Error" });
   }
 }
 
@@ -206,7 +209,7 @@ async function postCardDetails(req, res) {
 
 async function getCards(req, res) {
   try {
-    const response = await Cards.find({ isDelete: false }).populate("image");
+    const response = await Cards.find({ isDelete: false }).populate("image").sort({ createdAt: -1 });
     if (response) {
       return res.status(200).json({
         isSuccess: true,
