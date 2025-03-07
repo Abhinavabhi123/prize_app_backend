@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       lowercase: true,
-      unique:true
+      unique: true,
     },
     password: {
       type: Number,
@@ -26,8 +26,8 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    picture:{
-        type:String,
+    picture: {
+      type: String,
     },
     access: {
       type: Boolean,
@@ -40,8 +40,16 @@ const userSchema = new mongoose.Schema(
       },
     ],
     isVerified: {
-      type:Boolean,
-      default:false
+      type: Boolean,
+      default: false,
+    },
+    withDrawAmount: {
+      type: Number,
+      default: 0,
+    },
+    pendingWalletAmount: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -49,4 +57,4 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("User",userSchema);
+module.exports = mongoose.model("User", userSchema);
