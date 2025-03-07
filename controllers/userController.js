@@ -32,7 +32,7 @@ async function GoogleAuth(req, res) {
       });
     } else {
       const token = jwt.sign(
-        { id: userData._id, email: userData.email },
+        { id: userData._id, email: userData.email, name: userData.name },
         JWT_SECRET,
         {
           expiresIn: "30d",
@@ -59,8 +59,6 @@ async function GoogleAuth(req, res) {
 async function UserLogin(req, res) {
   try {
     const { email, password } = req.headers;
-    console.log(email, "email");
-
     await User.findOne({ email }).then(async (response) => {
       if (!response) {
         res.status(404).send({
@@ -91,7 +89,6 @@ async function UserLogin(req, res) {
           id: response._id,
           email: response.email,
           name: response?.name,
-          email: response?.email,
           picture: response?.picture,
         },
         JWT_SECRET,
@@ -226,6 +223,75 @@ async function checkAnswer(req, res) {
   }
 }
 
+async function userLoginWithMobile(req, res) {
+  try {
+    const { mobile, password } = req.headers;
+    await User.findOne({ mobile }).then(async (response) => {
+      if (!response) {
+        res.status(404).send({
+          isSuccess: false,
+          message: "Mobile number is incorrect !!",
+        });
+        return;
+      }
+
+      if (!response?.password) {
+        res.status(404).send({
+          isSuccess: false,
+          message:
+            "You are not registered with mobile and password,Please try Google Authentication",
+        });
+        return;
+      }
+      const isMatch = await bcrypt.compare(password, adminData.password);
+      if (!isMatch) {
+        res.status(401).send({
+          isSuccess: false,
+          message: "Password is incorrect !!",
+        });
+        return;
+      }
+      const token = jwt.sign(
+        {
+          id: response._id,
+          email: response.email,
+          name: response?.name,
+        },
+        JWT_SECRET,
+        {
+          expiresIn: "30d",
+        }
+      );
+      res.status(200).send({
+        isSuccess: true,
+        message: "Login successful",
+        token,
+        name: response?.name,
+        email: response?.email,
+        picture: response?.picture,
+      });
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function registerUserWithMobile(req, res) {
+  try {
+    console.log(req.body, "body");
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -233,4 +299,6 @@ module.exports = {
   googlepay,
   getGamesAndArts,
   checkAnswer,
+  userLoginWithMobile,
+  registerUserWithMobile,
 };

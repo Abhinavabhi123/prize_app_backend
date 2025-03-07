@@ -6,6 +6,8 @@ const {
   getGamesAndArts,
   googlepay,
   checkAnswer,
+  userLoginWithMobile,
+  registerUserWithMobile,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -14,6 +16,12 @@ const userValidate = require("../validation/userValidation");
 const handleValidationErrors = require("../middleware/validationMiddleware");
 //!get methods
 router.get("/userLogin", UserLogin);
+router.get(
+  "/userLoginWithMobile",
+  userValidate.userLoginMobile,
+  handleValidationErrors,
+  userLoginWithMobile
+);
 router.get("/getGamesAndArts", getGamesAndArts);
 router.get(
   "/getUserDetails",
@@ -32,5 +40,11 @@ router.get(
 // !post methods
 router.post("/googleAuth", GoogleAuth);
 router.post("/googlepay", googlepay);
+router.post(
+  "/registerUserWithMobile",
+  userValidate.userRegisterWithMobile,
+  handleValidationErrors,
+  registerUserWithMobile
+);
 
 module.exports = router;
