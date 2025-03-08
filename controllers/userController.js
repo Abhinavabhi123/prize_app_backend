@@ -1,9 +1,11 @@
-const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Stripe = require("stripe");
+const { v4: uuidv4 } = require("uuid");
+const User = require("../models/userModel");
 const Cards = require("../models/cardModel");
 const Arts = require("../models/artModel");
+const Coupon = require('../models/couponModel');
 
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -48,7 +50,7 @@ async function GoogleAuth(req, res) {
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -106,7 +108,7 @@ async function UserLogin(req, res) {
       });
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -131,7 +133,7 @@ async function getUserDetails(req, res) {
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -157,7 +159,7 @@ async function googlepay(req, res) {
 
     res.json({ success: true, paymentIntent });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -183,7 +185,7 @@ async function getGamesAndArts(req, res) {
       artData,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -195,8 +197,6 @@ async function checkAnswer(req, res) {
   try {
     const { answer, id } = req.headers;
     const result = await Arts.findOne({ _id: id });
-
-    console.log(result, "result");
     if (!result) {
       return res.status(404).json({
         isSuccess: false,
@@ -215,7 +215,7 @@ async function checkAnswer(req, res) {
       });
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -272,7 +272,7 @@ async function userLoginWithMobile(req, res) {
       });
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -282,9 +282,114 @@ async function userLoginWithMobile(req, res) {
 
 async function registerUserWithMobile(req, res) {
   try {
-    console.log(req.body, "body");
+    // console.log(req.body, "body");
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function purchaseArt(req, res) {
+  try {
+    const { quantity, id } = req.headers;
+    const artData = await Arts.findOne({ _id: id });
+    if (!artData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Art data not found!!",
+      });
+    }
+    const cardId = await Cards.findOne(
+      { status: true, isDelete: false },
+      { _id: 1 }
+    );
+    if (!cardId) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Active cards are unAvailable!!",
+      });
+    }
+
+    const totalArtAmount = artData?.price * Number(quantity);
+    const userData = await User.findOne({ _id: req.user.id });
+    if (!userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "User data not found!!",
+      });
+    }
+
+    // checking wallet amount with the total purchase amount
+    if (userData.wallet < totalArtAmount) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "No enough wallet amount to purchase the art !!",
+      });
+    }
+    // check the user already brought the art or not
+    const existingArt = userData.purchasedArts.find(
+      (art) => art.artId.toString() === id.toString()
+    );
+    if (existingArt) {
+      existingArt.count += Number(quantity);
+      userData.wallet -= totalArtAmount;
+      await userData.save();
+    } else {
+      await User.findByIdAndUpdate(
+        { _id: req.user.id },
+        {
+          $push: {
+            purchasedArts: {
+              artId: id,
+              count: Number(quantity),
+            },
+          },
+          $inc: { wallet: -totalArtAmount },
+        },
+        { new: true }
+      );
+    }
+    artData.purchaseCount += Number(quantity);
+    await artData.save();
+
+    const couponsToGenerate = [];
+    // Generate unique coupons
+    for (let i = 0; i < quantity; i++) {
+      let uniqueCouponId;
+      let couponExists;
+
+      // Ensure uniqueness
+      do {
+        uniqueCouponId = uuidv4();
+        couponExists = await Coupon.findOne({
+          code: uniqueCouponId,
+          cardId: cardId,
+        });
+      } while (couponExists);
+      const newCoupon = new Coupon({
+        code: uniqueCouponId,
+        couponCard: cardId,
+        userId: userData?._id, // Associate with the card
+      });
+
+      await newCoupon.save();
+      couponsToGenerate.push(newCoupon._id);
+    }
+    // Add coupons to user
+    if (couponsToGenerate.length > 0) {
+      await User.findByIdAndUpdate(userData?._id, {
+        $push: { coupons: { $each: couponsToGenerate } },
+      });
+    }
+
+    return res
+      .status(200)
+      .json({ isSuccess: true, message: "Art purchased successfully" });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       isSuccess: false,
       message: "Internal Server Error",
@@ -301,4 +406,5 @@ module.exports = {
   checkAnswer,
   userLoginWithMobile,
   registerUserWithMobile,
+  purchaseArt,
 };

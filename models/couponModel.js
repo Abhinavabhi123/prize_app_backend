@@ -6,17 +6,21 @@ const couponSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Card",
     },
-    codes: [
-      {
-        couponCode: {
-          type: String,
-        },
-        date: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+    couponCode: {
+      type: String,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    status: {
+      type: Boolean,
+      default: true,
+    },
+    date: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,

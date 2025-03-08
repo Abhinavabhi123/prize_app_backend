@@ -8,6 +8,7 @@ const {
   checkAnswer,
   userLoginWithMobile,
   registerUserWithMobile,
+  purchaseArt,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -35,6 +36,13 @@ router.get(
   userValidate.checkAnswer,
   handleValidationErrors,
   checkAnswer
+);
+router.get(
+  "/purchaseArt",
+  authenticate,
+  userValidate.purchaseArt,
+  handleValidationErrors,
+  purchaseArt
 );
 
 // !post methods

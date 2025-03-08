@@ -49,5 +49,11 @@ const userValidation = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
+  purchaseArt: [
+    header("id").notEmpty().withMessage("Art Id is required"),
+    header("quantity")
+      .notEmpty()
+      .withMessage("Art purchase Quantity is required"),
+  ],
 };
 module.exports = userValidation;

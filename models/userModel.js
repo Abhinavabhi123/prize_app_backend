@@ -33,10 +33,21 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    games_participated: [
+    coupons: [
       {
-        game_id: { type: String },
-        user_game_id: { type: String },
+        couponId: { type: mongoose.Schema.Types.ObjectId, ref: "Coupon" },
+      },
+    ],
+    purchasedArts: [
+      {
+        artId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Art",
+        },
+        count: {
+          type: Number,
+        },
+        purchaseDate: { type: Date, default: Date.now },
       },
     ],
     isVerified: {
