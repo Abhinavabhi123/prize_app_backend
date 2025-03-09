@@ -55,5 +55,44 @@ const userValidation = {
       .notEmpty()
       .withMessage("Art purchase Quantity is required"),
   ],
+  uploadProfileImage: [
+    body("image").custom((value, { req }) => {
+      if (!req.file) {
+        throw new Error("Image is required");
+      }
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        throw new Error("Only JPG, PNG, and JPEG files are allowed");
+      }
+      if (req.file.size > 5 * 1024 * 1024) {
+        throw new Error("File size must be less than 5MB");
+      }
+      return true;
+    }),
+  ],
+  getOtp: [
+    header("mobile")
+      .isLength({ min: 10, max: 10 })
+      .withMessage("Mobile number must be exactly 10 digits")
+      .isNumeric()
+      .withMessage("Mobile number must contain only numbers")
+      .notEmpty()
+      .withMessage("Mobile number is required"),
+  ],
+  updateMobileNumber:[
+    body('otp')
+    .notEmpty()
+    .withMessage('OTP is required')
+    .isString()
+    .withMessage('OTP must be a string')
+    .matches(/^[0-9]{4}$/) // Assuming 4-digit OTP, adjust as needed
+    .withMessage('OTP must be a 4-digit number'),
+
+  body('mobile')
+    .notEmpty()
+    .withMessage('Mobile number is required')
+    .isMobilePhone('any') // Or specify a locale like 'en-IN' for Indian numbers
+    .withMessage('Invalid mobile number'),
+  ]
 };
 module.exports = userValidation;

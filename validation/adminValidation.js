@@ -105,28 +105,25 @@ const adminValidation = {
       return true;
     }),
   ],
-  editArt :[
-    body("name")
-      .trim()
-      .notEmpty().withMessage("Name is required"),
-  
+  editArt: [
+    body("name").trim().notEmpty().withMessage("Name is required"),
+
     body("description")
       .trim()
-      .notEmpty().withMessage("Description is required"),
-  
+      .notEmpty()
+      .withMessage("Description is required"),
+
     body("price")
-      .notEmpty().withMessage("Price is required")
-      .isFloat({ gt: 0 }).withMessage("Price must be greater than zero")
+      .notEmpty()
+      .withMessage("Price is required")
+      .isFloat({ gt: 0 })
+      .withMessage("Price must be greater than zero")
       .toFloat(),
-  
-    body("question")
-      .trim()
-      .notEmpty().withMessage("Question is required"),
-  
-    body("answer")
-      .trim()
-      .notEmpty().withMessage("Answer is required"),
-  
+
+    body("question").trim().notEmpty().withMessage("Question is required"),
+
+    body("answer").trim().notEmpty().withMessage("Answer is required"),
+
     body("image")
       .optional()
       .custom((value, { req }) => {
@@ -143,9 +140,7 @@ const adminValidation = {
         return true;
       }),
   ],
-  deleteArt:[
-    header("artid").notEmpty().withMessage("Art id is missing")
-  ]
+  deleteArt: [header("artid").notEmpty().withMessage("Art id is missing")],
 };
 
 module.exports = adminValidation;

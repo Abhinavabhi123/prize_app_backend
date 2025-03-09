@@ -2,13 +2,20 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Stripe = require("stripe");
 const { v4: uuidv4 } = require("uuid");
+const twilio = require("twilio");
 const User = require("../models/userModel");
 const Cards = require("../models/cardModel");
 const Arts = require("../models/artModel");
-const Coupon = require('../models/couponModel');
+const Coupon = require("../models/couponModel");
 
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const client = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+// Store OTPs temporarily (For production, use a database)
+const otpStore = new Map();
 
 async function GoogleAuth(req, res) {
   try {
@@ -397,6 +404,98 @@ async function purchaseArt(req, res) {
   }
 }
 
+async function changeUserProfileImage(req, res) {
+  try {
+    if (req.file && req.user.id) {
+      const response = await User.updateOne(
+        { _id: req.user.id },
+        { $set: { picture: req.file.filename } }
+      );
+      if (response?.modifiedCount === 1) {
+        const userData = await User.findOne(
+          { _id: req.user.id },
+          { name: 1, email: 1, picture: 1 }
+        );
+        return res.status(200).json({
+          isSuccess: true,
+          message: "Image uploaded successfully",
+          userData,
+        });
+      }
+    }
+    return res.status(404).json({
+      isSuccess: false,
+      message: "Something went wrong!!",
+    });
+  } catch {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function getOtp(req, res) {
+  const { mobile } = req.headers;
+  console.log(mobile);
+
+  const otp = Math.floor(1000 + Math.random() * 9000);
+  try {
+    otpStore.set(mobile, otp);
+    const formattedMobile = mobile.startsWith("+") ? mobile : `+91${mobile}`;
+    await client.messages
+      .create({
+        body: `Your OTP for verify mobile number in Lucky draw website: ${otp},Don't share your otp with others`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: formattedMobile,
+      })
+      .then((message) => {
+        return res
+          .status(200)
+          .json({ isSuccess: true, message: "OTP sent successfully!" });
+      })
+      .catch(() => {
+        return res
+          .status(404)
+          .json({ isSuccess: false, message: "Error while sending otp" });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function updateMobileNumber(req, res) {
+  try {
+    const { otp, mobile } = req.body;
+    const { id } = req.user;   
+    const storedOtp = otpStore.get(String(mobile));
+    if (storedOtp && storedOtp == otp) {
+      otpStore.delete(mobile);
+
+      const response = await User.updateOne({ _id: id }, { $set: { mobile } });
+      if (response?.modifiedCount === 1) {
+        return res.status(200).json({
+          isSuccess: true,
+          message: "Mobile number updated successfully !",
+        });
+      }
+    } else {
+      res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -407,4 +506,7 @@ module.exports = {
   userLoginWithMobile,
   registerUserWithMobile,
   purchaseArt,
+  changeUserProfileImage,
+  updateMobileNumber,
+  getOtp,
 };

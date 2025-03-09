@@ -1,4 +1,6 @@
 const express = require("express");
+const path = require("path");
+const multer = require("multer");
 const {
   GoogleAuth,
   UserLogin,
@@ -9,12 +11,38 @@ const {
   userLoginWithMobile,
   registerUserWithMobile,
   purchaseArt,
+  changeUserProfileImage,
+  updateMobileNumber,
+  getOtp,
 } = require("../controllers/userController");
 
 const router = express.Router();
 const authenticate = require("../middleware/authentication");
 const userValidate = require("../validation/userValidation");
 const handleValidationErrors = require("../middleware/validationMiddleware");
+
+const userImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/userImage");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only images are allowed!"), false);
+  }
+};
+
+// Multer upload middleware
+const userImageUpload = multer({
+  storage: userImageStorage,
+  fileFilter: fileFilter,
+});
+
 //!get methods
 router.get("/userLogin", UserLogin);
 router.get(
@@ -44,6 +72,13 @@ router.get(
   handleValidationErrors,
   purchaseArt
 );
+router.get(
+  "/getOtp",
+  authenticate,
+  userValidate.getOtp,
+  handleValidationErrors,
+  getOtp
+);
 
 // !post methods
 router.post("/googleAuth", GoogleAuth);
@@ -53,6 +88,22 @@ router.post(
   userValidate.userRegisterWithMobile,
   handleValidationErrors,
   registerUserWithMobile
+);
+router.post(
+  "/changeUserProfileImage",
+  authenticate,
+  userImageUpload.single("image"),
+  userValidate.uploadProfileImage,
+  handleValidationErrors,
+  changeUserProfileImage
+);
+
+router.put(
+  "/updateMobileNumber",
+  authenticate,
+  userValidate.updateMobileNumber,
+  handleValidationErrors,
+  updateMobileNumber
 );
 
 module.exports = router;
