@@ -14,6 +14,8 @@ const {
   changeUserProfileImage,
   updateMobileNumber,
   getOtp,
+  getEmailOtp,
+  registerUserWithEmail
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -79,6 +81,12 @@ router.get(
   handleValidationErrors,
   getOtp
 );
+router.get(
+  "/getEmailOtp",
+  userValidate.getEmailOtp,
+  handleValidationErrors,
+  getEmailOtp
+);
 
 // !post methods
 router.post("/googleAuth", GoogleAuth);
@@ -97,7 +105,9 @@ router.post(
   handleValidationErrors,
   changeUserProfileImage
 );
+router.post("/registerUserWithEmail",registerUserWithEmail);
 
+// !put methods
 router.put(
   "/updateMobileNumber",
   authenticate,

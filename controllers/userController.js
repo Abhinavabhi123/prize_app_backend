@@ -2,18 +2,29 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Stripe = require("stripe");
 const { v4: uuidv4 } = require("uuid");
+const nodemailer = require("nodemailer");
 const twilio = require("twilio");
 const User = require("../models/userModel");
 const Cards = require("../models/cardModel");
 const Arts = require("../models/artModel");
 const Coupon = require("../models/couponModel");
 
+const saltValue = 10;
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
 // Store OTPs temporarily (For production, use a database)
 const otpStore = new Map();
 
@@ -438,8 +449,6 @@ async function changeUserProfileImage(req, res) {
 
 async function getOtp(req, res) {
   const { mobile } = req.headers;
-  console.log(mobile);
-
   const otp = Math.floor(1000 + Math.random() * 9000);
   try {
     otpStore.set(mobile, otp);
@@ -472,7 +481,7 @@ async function getOtp(req, res) {
 async function updateMobileNumber(req, res) {
   try {
     const { otp, mobile } = req.body;
-    const { id } = req.user;   
+    const { id } = req.user;
     const storedOtp = otpStore.get(String(mobile));
     if (storedOtp && storedOtp == otp) {
       otpStore.delete(mobile);
@@ -485,6 +494,83 @@ async function updateMobileNumber(req, res) {
         });
       }
     } else {
+      res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to get otp for email
+async function getEmailOtp(req, res) {
+  try {
+    const { email } = req.headers;
+    const userData = await User.findOne({ email });
+    if (userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The email is already registered, Please try to login!",
+      });
+    }
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    otpStore.set(email, otp);
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Your OTP Code",
+      text: `Your OTP code is: ${otp}. It will expire in 5 minutes.`,
+    };
+    await transporter
+      .sendMail(mailOptions)
+      .then((response) => {
+        if (response.messageId) {
+          return res.status(200).json({
+            isSuccess: true,
+            message:
+              "Otp sent successfully, Please check the given email address",
+          });
+        }
+      })
+      .catch(() => {
+        return res.status(404).json({
+          isSuccess: false,
+          message: "Sending Otp failed, Please try after some time",
+        });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to register user with email
+async function registerUserWithEmail(req, res) {
+  try {
+    const { email, name, password, otp } = req.body;
+    const storedOtp = otpStore.get(String(email));
+    if (storedOtp && storedOtp == otp) {
+      const hashPassword = await bcrypt.hash(password, saltValue);
+     const response =  await User.create({email,name,password:hashPassword});
+     if(response){
+      return res.status(200).json({
+        isSuccess:true,
+        message:"Registration Successful, Please Login."
+      })
+     }else{
+      return res.status(404).json({
+        isSuccess:false,
+        message:"User Login failed, Please try after some time!"
+      })
+     }
+     
+    }else{
       res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
     }
   } catch (error) {
@@ -509,4 +595,6 @@ module.exports = {
   changeUserProfileImage,
   updateMobileNumber,
   getOtp,
+  getEmailOtp,
+  registerUserWithEmail,
 };

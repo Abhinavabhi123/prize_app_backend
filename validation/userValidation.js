@@ -93,6 +93,15 @@ const userValidation = {
     .withMessage('Mobile number is required')
     .isMobilePhone('any') // Or specify a locale like 'en-IN' for Indian numbers
     .withMessage('Invalid mobile number'),
+  ],
+  getEmailOtp:[
+    header("email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid email format")
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/)
+    .withMessage("Email must have a valid domain with a TLD"),
   ]
 };
 module.exports = userValidation;
