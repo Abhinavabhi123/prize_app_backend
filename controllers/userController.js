@@ -300,7 +300,33 @@ async function userLoginWithMobile(req, res) {
 
 async function registerUserWithMobile(req, res) {
   try {
-    // console.log(req.body, "body");
+    const {mobile,password,otp,name} = req.body;    
+    const userData = await User.findOne({mobile});
+    if(userData){
+      return res.status(404).json({isSuccess:false,
+        message:"The mobil number is already registered, Please try to Login!!"
+      })
+    }else{
+      const storedOtp = otpStore.get(String(mobile));
+      if (storedOtp && storedOtp == otp) {
+        const hashPassword = await bcrypt.hash(password, saltValue);
+       const response =  await User.create({mobile,name,password:hashPassword});
+       if(response){
+        return res.status(200).json({
+          isSuccess:true,
+          message:"Registration Successful, Please Login."
+        })
+       }else{
+        return res.status(404).json({
+          isSuccess:false,
+          message:"User Login failed, Please try after some time!"
+        })
+       }
+       
+      }else{
+        res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
+      }
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({
