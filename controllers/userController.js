@@ -83,7 +83,7 @@ async function UserLogin(req, res) {
       if (!response) {
         res.status(404).send({
           isSuccess: false,
-          message: "Email is incorrect !!",
+          message: "Email is incorrect or email is not registered !!",
         });
         return;
       }
@@ -96,7 +96,7 @@ async function UserLogin(req, res) {
         });
         return;
       }
-      const isMatch = await bcrypt.compare(password, adminData.password);
+      const isMatch = await bcrypt.compare(password, response.password);
       if (!isMatch) {
         res.status(401).send({
           isSuccess: false,
@@ -248,7 +248,8 @@ async function userLoginWithMobile(req, res) {
       if (!response) {
         res.status(404).send({
           isSuccess: false,
-          message: "Mobile number is incorrect !!",
+          message:
+            "Mobile number is incorrect or mobile number is not registered !!",
         });
         return;
       }
@@ -261,7 +262,7 @@ async function userLoginWithMobile(req, res) {
         });
         return;
       }
-      const isMatch = await bcrypt.compare(password, adminData.password);
+      const isMatch = await bcrypt.compare(password, response.password);
       if (!isMatch) {
         res.status(401).send({
           isSuccess: false,
@@ -300,30 +301,37 @@ async function userLoginWithMobile(req, res) {
 
 async function registerUserWithMobile(req, res) {
   try {
-    const {mobile,password,otp,name} = req.body;    
-    const userData = await User.findOne({mobile});
-    if(userData){
-      return res.status(404).json({isSuccess:false,
-        message:"The mobil number is already registered, Please try to Login!!"
-      })
-    }else{
+    const { mobile, password, otp, name } = req.body;
+    const userData = await User.findOne({ mobile });
+    if (userData) {
+      return res
+        .status(404)
+        .json({
+          isSuccess: false,
+          message:
+            "The mobil number is already registered, Please try to Login!!",
+        });
+    } else {
       const storedOtp = otpStore.get(String(mobile));
       if (storedOtp && storedOtp == otp) {
         const hashPassword = await bcrypt.hash(password, saltValue);
-       const response =  await User.create({mobile,name,password:hashPassword});
-       if(response){
-        return res.status(200).json({
-          isSuccess:true,
-          message:"Registration Successful, Please Login."
-        })
-       }else{
-        return res.status(404).json({
-          isSuccess:false,
-          message:"User Login failed, Please try after some time!"
-        })
-       }
-       
-      }else{
+        const response = await User.create({
+          mobile,
+          name,
+          password: hashPassword,
+        });
+        if (response) {
+          return res.status(200).json({
+            isSuccess: true,
+            message: "Registration Successful, Please Login.",
+          });
+        } else {
+          return res.status(404).json({
+            isSuccess: false,
+            message: "User Login failed, Please try after some time!",
+          });
+        }
+      } else {
         res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
       }
     }
@@ -583,20 +591,23 @@ async function registerUserWithEmail(req, res) {
     const storedOtp = otpStore.get(String(email));
     if (storedOtp && storedOtp == otp) {
       const hashPassword = await bcrypt.hash(password, saltValue);
-     const response =  await User.create({email,name,password:hashPassword});
-     if(response){
-      return res.status(200).json({
-        isSuccess:true,
-        message:"Registration Successful, Please Login."
-      })
-     }else{
-      return res.status(404).json({
-        isSuccess:false,
-        message:"User Login failed, Please try after some time!"
-      })
-     }
-     
-    }else{
+      const response = await User.create({
+        email,
+        name,
+        password: hashPassword,
+      });
+      if (response) {
+        return res.status(200).json({
+          isSuccess: true,
+          message: "Registration Successful, Please Login.",
+        });
+      } else {
+        return res.status(404).json({
+          isSuccess: false,
+          message: "User Login failed, Please try after some time!",
+        });
+      }
+    } else {
       res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
     }
   } catch (error) {

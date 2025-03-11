@@ -46,7 +46,12 @@ const userImageUpload = multer({
 });
 
 //!get methods
-router.get("/userLogin", UserLogin);
+router.get(
+  "/userLogin",
+  userValidate.userLoginEmail,
+  handleValidationErrors,
+  UserLogin
+);
 router.get(
   "/userLoginWithMobile",
   userValidate.userLoginMobile,
