@@ -18,7 +18,9 @@ const {
   deleteArtDetails,
   changeArtStatus,
   editCardDetails,
-  getUsers
+  getUsers,
+  getDashboardData,
+  inactivateCard,
 } = require("../controllers/adminController");
 const authenticate = require("../middleware/authentication");
 const adminValidation = require("../validation/adminValidation");
@@ -61,7 +63,8 @@ router.get("/login", adminValidation.login, handleValidationErrors, adminLogin);
 router.get("/getCardImages", authenticate, getCardImages);
 router.get("/getCards", authenticate, getCards);
 router.get("/getArts", authenticate, getArts);
-router.get("/getUsers",getUsers)
+router.get("/getUsers", authenticate, getUsers);
+router.get("/getDashboardData", authenticate, getDashboardData);
 
 // !post methods
 router.post(
@@ -95,7 +98,13 @@ router.post(
 );
 
 // !put methods
-router.put("/activateCard", authenticate, activateCard);
+router.put(
+  "/activateCard",
+  authenticate,
+  adminValidation.activateCard,
+  handleValidationErrors,
+  activateCard
+);
 router.put(
   "/deleteArtDetails",
   authenticate,
@@ -116,6 +125,13 @@ router.put(
   adminValidation.editCardDetails,
   handleValidationErrors,
   editCardDetails
+);
+router.put(
+  "/inactivateCard",
+  authenticate,
+  adminValidation.inactivateCard,
+  handleValidationErrors,
+  inactivateCard
 );
 
 // !patch methods

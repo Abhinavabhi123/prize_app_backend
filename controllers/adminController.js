@@ -8,6 +8,7 @@ const Cards = require("../models/cardModel");
 const JWT_SECRET = process.env.JWT_SECRET;
 const Arts = require("../models/artModel");
 const Users = require("../models/userModel");
+const Coupons = require("../models/couponModel");
 
 const saltValue = 10;
 
@@ -159,6 +160,7 @@ async function postCardDetails(req, res) {
       priceMoney,
       premium,
       cardImageId,
+      eliminationStages,
     } = req.body;
     let cardDetails = await Cards.find({ isDelete: false });
     if (cardDetails.length > 0) {
@@ -181,6 +183,7 @@ async function postCardDetails(req, res) {
       priceMoney,
       premium,
       image: cardImageId,
+      eliminationStages,
     }).then(() => {
       return res.status(200).json({
         isSuccess: true,
@@ -571,14 +574,94 @@ async function editCardDetails(req, res) {
   }
 }
 
-async function getUsers(req,res){
+async function getUsers(req, res) {
   try {
     const userData = await Users.find();
     return res.status(200).send({
-      isSuccess:true,
-      message:"User data fetched successfully",
-      userData
-    })
+      isSuccess: true,
+      message: "User data fetched successfully",
+      userData,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function getDashboardData(req, res) {
+  try {
+    const userData = await Users.find(
+      {},
+      { name: 1, picture: 1, coupons: 1, total_amount: 1 }
+    )
+      .sort({ couponCount: -1 })
+      .limit(7);
+
+    const userArtData = await Users.find(
+      {},
+      { name: 1, picture: 1, purchasedArts: 1 }
+    )
+      .sort({ purchasedArts: -1 })
+      .limit(7);
+    const users = await Users.countDocuments();
+    const completedCards = await Cards.countDocuments({ completed: true });
+    const arts = await Arts.countDocuments({ isDelete: false });
+    const coupons = await Coupons.countDocuments();
+    const cards = await Cards.countDocuments({ isDelete: false });
+
+    return res.status(200).json({
+      isSuccess: true,
+      message: "Dashboard data fetched successfully",
+      userData,
+      userArtData,
+      users,
+      dashData: {
+        users,
+        arts,
+        completedCards,
+        coupons,
+        cards,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+// function to inactive the card status
+async function inactivateCard(req, res) {
+  try {
+    const { cardid } = req.headers;
+    const cardData = await Cards.findOne({
+      _id: cardid,
+    });
+    if (!cardData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while fetching the card details!!",
+      });
+    }
+    const response = await Cards.updateOne(
+      { _id: cardid },
+      { $set: { status: false } }
+    );
+    if (response && response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Card status changed successfully",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while changing card status",
+      });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -605,5 +688,7 @@ module.exports = {
   deleteArtDetails,
   changeArtStatus,
   editCardDetails,
-  getUsers
+  getUsers,
+  getDashboardData,
+  inactivateCard,
 };

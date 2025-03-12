@@ -17,7 +17,22 @@ const adminValidation = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long"),
   ],
-
+  activateCard: [
+    header("cardId")
+      .trim()
+      .notEmpty()
+      .withMessage("Card ID is required")
+      .matches(/^[A-Za-z0-9_-]+$/)
+      .withMessage("Card ID must be alphanumeric"),
+  ],
+  inactivateCard: [
+    header("cardId")
+      .trim()
+      .notEmpty()
+      .withMessage("Card ID is required")
+      .matches(/^[A-Za-z0-9_-]+$/)
+      .withMessage("Card ID must be alphanumeric"),
+  ],
   createCard: [
     body("cardName")
       .trim()
@@ -141,45 +156,41 @@ const adminValidation = {
       }),
   ],
   deleteArt: [header("artid").notEmpty().withMessage("Art id is missing")],
-  changeArtStatus:[
-    body("id")
-    .notEmpty()
-    .withMessage("Id is required")
-  ],
-  editCardDetails:[
+  changeArtStatus: [body("id").notEmpty().withMessage("Id is required")],
+  editCardDetails: [
     body("cardName")
-    .trim()
-    .notEmpty()
-    .withMessage("Card name is required")
-    .isLength({ min: 3 })
-    .withMessage("Card name must be at least 3 characters")
-    .isLength({ max: 50 })
-    .withMessage("Card name cannot exceed 50 characters"),
+      .trim()
+      .notEmpty()
+      .withMessage("Card name is required")
+      .isLength({ min: 3 })
+      .withMessage("Card name must be at least 3 characters")
+      .isLength({ max: 50 })
+      .withMessage("Card name cannot exceed 50 characters"),
 
-  body("cardId")
-    .trim()
-    .notEmpty()
-    .withMessage("Card ID is required")
-    .matches(/^[A-Za-z0-9_-]+$/)
-    .withMessage("Card ID must be alphanumeric"),
+    body("cardId")
+      .trim()
+      .notEmpty()
+      .withMessage("Card ID is required")
+      .matches(/^[A-Za-z0-9_-]+$/)
+      .withMessage("Card ID must be alphanumeric"),
 
-  body("priceMoney")
-    .notEmpty()
-    .withMessage("Price is required")
-    .isFloat({ gt: 0 })
-    .withMessage("Price must be greater than 0"),
+    body("priceMoney")
+      .notEmpty()
+      .withMessage("Price is required")
+      .isFloat({ gt: 0 })
+      .withMessage("Price must be greater than 0"),
 
-  body("premium")
-    .notEmpty()
-    .withMessage("Premium amount is required")
-    .isFloat({ gt: 0 })
-    .withMessage("Premium must be greater than 0"),
+    body("premium")
+      .notEmpty()
+      .withMessage("Premium amount is required")
+      .isFloat({ gt: 0 })
+      .withMessage("Premium must be greater than 0"),
 
-  body("startDate").notEmpty().withMessage("Start date is required"),
-  body("endDate").notEmpty().withMessage("End date is required"),
-  body("cardImageId").notEmpty().withMessage("Image is required"),
-  header("cardId").notEmpty().withMessage("Card id is required"),
-  ]
+    body("startDate").notEmpty().withMessage("Start date is required"),
+    body("endDate").notEmpty().withMessage("End date is required"),
+    body("cardImageId").notEmpty().withMessage("Image is required"),
+    header("cardId").notEmpty().withMessage("Card id is required"),
+  ],
 };
 
 module.exports = adminValidation;
