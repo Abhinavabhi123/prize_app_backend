@@ -37,9 +37,6 @@ async function GoogleAuth(req, res) {
         const token = jwt.sign(
           { id: response._id, email: response.email },
           JWT_SECRET,
-          {
-            expiresIn: "30d",
-          }
         );
         res.status(200).send({
           isSuccess: true,
@@ -54,9 +51,6 @@ async function GoogleAuth(req, res) {
       const token = jwt.sign(
         { id: userData._id, email: userData.email, name: userData.name },
         JWT_SECRET,
-        {
-          expiresIn: "30d",
-        }
       );
       res.status(200).send({
         isSuccess: true,
@@ -112,9 +106,6 @@ async function UserLogin(req, res) {
           picture: response?.picture,
         },
         JWT_SECRET,
-        {
-          expiresIn: "30d",
-        }
       );
       res.status(200).send({
         isSuccess: true,
@@ -277,9 +268,6 @@ async function userLoginWithMobile(req, res) {
           name: response?.name,
         },
         JWT_SECRET,
-        {
-          expiresIn: "30d",
-        }
       );
       res.status(200).send({
         isSuccess: true,
@@ -304,13 +292,11 @@ async function registerUserWithMobile(req, res) {
     const { mobile, password, otp, name } = req.body;
     const userData = await User.findOne({ mobile });
     if (userData) {
-      return res
-        .status(404)
-        .json({
-          isSuccess: false,
-          message:
-            "The mobil number is already registered, Please try to Login!!",
-        });
+      return res.status(404).json({
+        isSuccess: false,
+        message:
+          "The mobil number is already registered, Please try to Login!!",
+      });
     } else {
       const storedOtp = otpStore.get(String(mobile));
       if (storedOtp && storedOtp == otp) {
@@ -590,6 +576,7 @@ async function registerUserWithEmail(req, res) {
     const { email, name, password, otp } = req.body;
     const storedOtp = otpStore.get(String(email));
     if (storedOtp && storedOtp == otp) {
+      otpStore.delete(email);
       const hashPassword = await bcrypt.hash(password, saltValue);
       const response = await User.create({
         email,
@@ -619,6 +606,192 @@ async function registerUserWithEmail(req, res) {
   }
 }
 
+async function checkEmailAndGetOtp(req, res) {
+  try {
+    const { email } = req.headers;
+    const userData = await User.findOne({ email });
+    if (!userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The Email is not registered. Please try sign up!",
+      });
+    }
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    otpStore.set(email, otp);
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Your OTP Code",
+      text: `Your OTP code is: ${otp}. It will expire in 5 minutes.`,
+    };
+    await transporter
+      .sendMail(mailOptions)
+      .then((response) => {
+        if (response.messageId) {
+          return res.status(200).json({
+            isSuccess: true,
+            message:
+              "Otp sent successfully, Please check the given email address",
+          });
+        }
+      })
+      .catch(() => {
+        return res.status(404).json({
+          isSuccess: false,
+          message: "Sending Otp failed, Please try after some time",
+        });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to verify the user otp is correct to change password
+async function verifyEmailOtp(req, res) {
+  try {
+    const { email, otp } = req.headers;
+    const storedOtp = otpStore.get(String(email));
+    if (storedOtp && storedOtp == otp) {
+      otpStore.delete(email);
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Otp verified Successfully,You can change the password!!",
+      });
+    } else {
+      res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// Function to change password with email
+async function changePasswordWithEmail(req, res) {
+  try {
+    const { email, password } = req.body;
+    const userData = await User.findOne({ email });
+    if (userData) {
+      const hashPassword = await bcrypt.hash(password, saltValue);
+      const response = await User.updateOne(
+        { email },
+        { $set: { password: hashPassword } }
+      );
+      if (response?.modifiedCount === 1) {
+        return res.status(200).json({
+          isSuccess: true,
+          message: "Password changed successfully,Please try to login.",
+        });
+      }
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Something went wrong while changing the password!!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to get the otp for password change using mobile
+async function checkMobileAndGetOtp(req, res) {
+  try {
+    const { mobile } = req.headers;
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    otpStore.set(mobile, otp);
+    const formattedMobile = mobile.startsWith("+") ? mobile : `+91${mobile}`;
+    await client.messages
+      .create({
+        body: `Your OTP for verify mobile number in Lucky draw website: ${otp},Don't share your otp with others`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: formattedMobile,
+      })
+      .then(() => {
+        return res
+          .status(200)
+          .json({ isSuccess: true, message: "OTP sent successfully!" });
+      })
+      .catch(() => {
+        return res
+          .status(404)
+          .json({ isSuccess: false, message: "Error while sending otp" });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to verify mobile otp to change password
+async function verifyMobileOtp(req, res) {
+  try {
+    const { otp, mobile } = req.headers;
+    const storedOtp = otpStore.get(String(mobile));
+    if (storedOtp && storedOtp == otp) {
+      otpStore.delete(mobile);
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Otp verified Successfully,You can change the password!!",
+      });
+    } else {
+      res.status(400).json({ isSuccess: false, message: "Invalid OTP" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to change password with mobile number
+async function changePasswordWithMobile(req, res) {
+  try {
+    const { mobile, password } = req.body;
+   
+    const userData = await User.findOne({ mobile });
+    if (!userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Something went wrong while changing the password!!",
+      });
+    }
+    const hashPassword = await bcrypt.hash(password, saltValue);
+    const response = await User.updateOne(
+      { mobile },
+      { $set: { password: hashPassword } }
+    );
+    if (response?.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Password changed successfully,Please try to login.",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -634,4 +807,10 @@ module.exports = {
   getOtp,
   getEmailOtp,
   registerUserWithEmail,
+  checkEmailAndGetOtp,
+  verifyEmailOtp,
+  changePasswordWithEmail,
+  checkMobileAndGetOtp,
+  verifyMobileOtp,
+  changePasswordWithMobile,
 };
