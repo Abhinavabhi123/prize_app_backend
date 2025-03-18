@@ -11,11 +11,11 @@ const cardSchema = new mongoose.Schema(
       required: true,
     },
     startDate: {
-      type: Date,
+      type: String,
       required: true,
     },
     endDate: {
-      type: Date,
+      type: String,
       required: true,
     },
     priceMoney: {
@@ -48,6 +48,14 @@ const cardSchema = new mongoose.Schema(
         status: { type: Boolean },
       },
     ],
+    isEliminationStarted: {
+      type: Boolean,
+      default: false,
+    },
+    winnerCoupon:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Coupon",
+    }
   },
   {
     timestamps: true,

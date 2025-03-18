@@ -155,7 +155,6 @@ router.post(
 // !put methods
 router.put(
   "/updateMobileNumber",
-  authenticate,
   userValidate.updateMobileNumber,
   handleValidationErrors,
   updateMobileNumber

@@ -9,6 +9,8 @@ const path = require("path");
 const connectDB = require("./database/db");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
+const scheduleEliminations = require("./utils/eliminationScheduler");
+const schedulePickWinner = require("./utils/pickWinnerScheduler");
 
 const app = express();
 
@@ -47,5 +49,7 @@ app.use("/admin/", adminRoutes);
 app.use("/", userRoutes);
 
 app.listen(PORT, () => {
+  scheduleEliminations();
+  schedulePickWinner();
   console.log(`Server running at port ${PORT} ⚡⚡`);
 });

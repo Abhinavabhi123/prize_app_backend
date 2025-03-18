@@ -92,6 +92,7 @@ const userValidation = {
   ],
   purchaseArt: [
     header("id").notEmpty().withMessage("Art Id is required"),
+    header("cardid").notEmpty().withMessage("Card Id is required"),
     header("quantity")
       .notEmpty()
       .withMessage("Art purchase Quantity is required"),
@@ -194,7 +195,7 @@ const userValidation = {
       .matches(/^[0-9]{4}$/) // Assuming 4-digit OTP, adjust as needed
       .withMessage("OTP must be a 4-digit number"),
   ],
-  changePasswordWithEmail:[
+  changePasswordWithEmail: [
     body("email")
       .trim()
       .notEmpty()
@@ -209,7 +210,7 @@ const userValidation = {
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters"),
   ],
-  changePasswordWithMobile:[
+  changePasswordWithMobile: [
     body("mobile")
       .notEmpty()
       .withMessage("Mobile number is required")
@@ -217,9 +218,7 @@ const userValidation = {
       .withMessage("Mobile number must be exactly 10 digits")
       .isNumeric()
       .withMessage("Mobile number must contain only numbers"),
-    body("password")
-      .notEmpty()
-      .withMessage("Password is required")
-  ]
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
 };
 module.exports = userValidation;

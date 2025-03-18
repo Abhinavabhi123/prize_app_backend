@@ -21,6 +21,11 @@ const couponSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    auctionDetails: {
+      auction_user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      auction_date: { type: Date },
+      auction_price: { type: Number },
+    },
   },
   {
     timestamps: true,

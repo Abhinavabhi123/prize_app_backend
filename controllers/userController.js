@@ -36,7 +36,7 @@ async function GoogleAuth(req, res) {
       await User.create({ email, name, picture }).then((response) => {
         const token = jwt.sign(
           { id: response._id, email: response.email },
-          JWT_SECRET,
+          JWT_SECRET
         );
         res.status(200).send({
           isSuccess: true,
@@ -50,7 +50,7 @@ async function GoogleAuth(req, res) {
     } else {
       const token = jwt.sign(
         { id: userData._id, email: userData.email, name: userData.name },
-        JWT_SECRET,
+        JWT_SECRET
       );
       res.status(200).send({
         isSuccess: true,
@@ -105,7 +105,7 @@ async function UserLogin(req, res) {
           name: response?.name,
           picture: response?.picture,
         },
-        JWT_SECRET,
+        JWT_SECRET
       );
       res.status(200).send({
         isSuccess: true,
@@ -128,7 +128,9 @@ async function UserLogin(req, res) {
 async function getUserDetails(req, res) {
   try {
     const { id } = req.headers;
-    const response = await User.findOne({ _id: id });
+    const response = await User.findOne({ _id: id }).populate(
+      "purchasedArts.artId"
+    );
     if (response) {
       return res.status(200).json({
         isSuccess: true,
@@ -179,19 +181,34 @@ async function googlepay(req, res) {
 //  function to get the games and arts data for games page
 async function getGamesAndArts(req, res) {
   try {
-    const cardData = await Cards.findOne({
+    const cardData = await Cards.find({
       completed: false,
       status: true,
       isDelete: false,
+      isEliminationStarted: false,
+    }).sort({
+      startDate: 1,
     });
-    const artData = await Arts.find({ status: true, isDelete: false }).sort({
-      purchaseCount: 1,
-    });
+
+    const now = new Date();
+    let artData = [];
+    const nextCard = cardData
+      .filter((draw) => draw.startDate > now)
+      .sort((a, b) => a.startDate - b.startDate)[0];
+    if (cardData.length > 0) {
+      artData = await Arts.find({ status: true, isDelete: false })
+        .sort({
+          price: -1,
+        })
+        .limit(cardData.length);
+    }
+
     return res.status(200).send({
       isSuccess: true,
       message: "Card and art data fetched successfully",
       cardData,
       artData,
+      nextCard: nextCard,
     });
   } catch (error) {
     console.error(error);
@@ -267,7 +284,7 @@ async function userLoginWithMobile(req, res) {
           email: response.email,
           name: response?.name,
         },
-        JWT_SECRET,
+        JWT_SECRET
       );
       res.status(200).send({
         isSuccess: true,
@@ -332,27 +349,28 @@ async function registerUserWithMobile(req, res) {
 
 async function purchaseArt(req, res) {
   try {
-    const { quantity, id } = req.headers;
+    const { quantity, id, cardid, userid } = req.headers;
     const artData = await Arts.findOne({ _id: id });
     if (!artData) {
       return res.status(404).json({
         isSuccess: false,
-        message: "Art data not found!!",
+        message: "Art data not found!!Please try again later",
       });
     }
-    const cardId = await Cards.findOne(
-      { status: true, isDelete: false },
-      { _id: 1 }
-    );
-    if (!cardId) {
+    const cardData = await Cards.findOne({
+      _id: cardid,
+      status: true,
+      isDelete: false,
+    });
+    if (!cardData) {
       return res.status(404).json({
         isSuccess: false,
-        message: "Active cards are unAvailable!!",
+        message: "Active cards are unAvailable!! Please try after some time.",
       });
     }
 
     const totalArtAmount = artData?.price * Number(quantity);
-    const userData = await User.findOne({ _id: req.user.id });
+    const userData = await User.findOne({ _id: userid });
     if (!userData) {
       return res.status(404).json({
         isSuccess: false,
@@ -364,7 +382,8 @@ async function purchaseArt(req, res) {
     if (userData.wallet < totalArtAmount) {
       return res.status(404).json({
         isSuccess: false,
-        message: "No enough wallet amount to purchase the art !!",
+        message:
+          "No enough wallet amount to purchase the art !!Please recharge the wallet.",
       });
     }
     // check the user already brought the art or not
@@ -377,7 +396,7 @@ async function purchaseArt(req, res) {
       await userData.save();
     } else {
       await User.findByIdAndUpdate(
-        { _id: req.user.id },
+        { _id: userid},
         {
           $push: {
             purchasedArts: {
@@ -404,12 +423,12 @@ async function purchaseArt(req, res) {
         uniqueCouponId = uuidv4();
         couponExists = await Coupon.findOne({
           code: uniqueCouponId,
-          cardId: cardId,
+          cardId: cardid,
         });
       } while (couponExists);
       const newCoupon = new Coupon({
         code: uniqueCouponId,
-        couponCard: cardId,
+        couponCard: cardid,
         userId: userData?._id, // Associate with the card
       });
 
@@ -419,7 +438,9 @@ async function purchaseArt(req, res) {
     // Add coupons to user
     if (couponsToGenerate.length > 0) {
       await User.findByIdAndUpdate(userData?._id, {
-        $push: { coupons: { $each: couponsToGenerate } },
+        $push: {
+          coupons: { $each: couponsToGenerate.map((id) => ({ couponId: id })) },
+        },
       });
     }
 
@@ -764,7 +785,7 @@ async function verifyMobileOtp(req, res) {
 async function changePasswordWithMobile(req, res) {
   try {
     const { mobile, password } = req.body;
-   
+
     const userData = await User.findOne({ mobile });
     if (!userData) {
       return res.status(404).json({

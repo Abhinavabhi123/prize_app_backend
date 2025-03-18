@@ -9,6 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const Arts = require("../models/artModel");
 const Users = require("../models/userModel");
 const Coupons = require("../models/couponModel");
+const scheduleEliminations = require("../utils/eliminationScheduler");
+const schedulePickWinner = require("../utils/pickWinnerScheduler");
 
 const saltValue = 10;
 
@@ -162,6 +164,7 @@ async function postCardDetails(req, res) {
       cardImageId,
       eliminationStages,
     } = req.body;
+
     let cardDetails = await Cards.find({ isDelete: false });
     if (cardDetails.length > 0) {
       if (
@@ -175,6 +178,11 @@ async function postCardDetails(req, res) {
         });
       }
     }
+    // code to sort elimination stages with date if the date is shuffled
+    const sortedData = eliminationStages.sort(
+      (a, b) => new Date(a.stageDate) - new Date(b.stageDate)
+    );
+
     await Cards.create({
       name: cardName,
       cardId,
@@ -183,7 +191,8 @@ async function postCardDetails(req, res) {
       priceMoney,
       premium,
       image: cardImageId,
-      eliminationStages,
+      eliminationStages: sortedData,
+      isEliminationStarted: false,
     }).then(() => {
       return res.status(200).json({
         isSuccess: true,
@@ -261,21 +270,41 @@ async function activateCard(req, res) {
         message: "Issue while fetching the card details!!",
       });
     }
-
-    const response = await Cards.updateOne(
-      { _id: cardid },
-      { $set: { status: true } }
-    );
-    if (response && response.modifiedCount === 1) {
-      return res.status(200).json({
-        isSuccess: true,
-        message: "Card status changed successfully",
-      });
-    } else {
+    const cards = await Cards.countDocuments({
+      status: true,
+      isDelete: false,
+      isEliminationStarted: false,
+    });
+    const artCount = await Arts.countDocuments({
+      status: true,
+      isDelete: false,
+    });
+    if (cards + 1 > artCount) {
       return res.status(404).json({
         isSuccess: false,
-        message: "Issue while changing card status",
+        message:
+          "Not enough arts found. Please create more arts to activate the card!",
       });
+    } else {
+      const response = await Cards.updateOne(
+        { _id: cardid },
+        { $set: { status: true } }
+      );
+      if (response && response.modifiedCount === 1) {
+        scheduleEliminations();
+        schedulePickWinner();
+        return res.status(200).json({
+          isSuccess: true,
+          message: "Card status changed successfully",
+        });
+      } else {
+        scheduleEliminations();
+        schedulePickWinner();
+        return res.status(404).json({
+          isSuccess: false,
+          message: "Issue while changing card status",
+        });
+      }
     }
   } catch (error) {
     console.error(`Error change status of card with ID ${cardid}:`, error);
@@ -652,11 +681,15 @@ async function inactivateCard(req, res) {
       { $set: { status: false } }
     );
     if (response && response.modifiedCount === 1) {
+      scheduleEliminations();
+      schedulePickWinner();
       return res.status(200).json({
         isSuccess: true,
         message: "Card status changed successfully",
       });
     } else {
+      scheduleEliminations();
+      schedulePickWinner();
       return res.status(404).json({
         isSuccess: false,
         message: "Issue while changing card status",
