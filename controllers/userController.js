@@ -396,7 +396,7 @@ async function purchaseArt(req, res) {
       await userData.save();
     } else {
       await User.findByIdAndUpdate(
-        { _id: userid},
+        { _id: userid },
         {
           $push: {
             purchasedArts: {
@@ -813,6 +813,173 @@ async function changePasswordWithMobile(req, res) {
   }
 }
 
+// function to get user coupons
+async function getUserCoupons(req, res) {
+  try {
+    const { id } = req.headers;
+    const userCoupons = await User.findOne(
+      { _id: id },
+      { coupons: 1, _id: 0 }
+    ).populate({
+      path: "coupons.couponId",
+      populate: {
+        path: "couponCard",
+        model: "Card",
+      },
+    });
+
+    return res.status(200).json({
+      isSuccess: true,
+      message: "Coupon data fetched successfully",
+      data: userCoupons,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to make coupon for auction
+async function makeCouponForAuction(req, res) {
+  try {
+    const { id } = req.headers;
+    const couponData = await Coupon.findOne({
+      _id: id,
+      status: true,
+      auction: false,
+    }).populate("couponCard");
+    if (!couponData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Your coupon is already eliminated",
+      });
+    }
+    if (couponData && couponData.couponCard?.completed) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The lucky draw is already completed.",
+      });
+    } else if (couponData && !couponData.couponCard?.isEliminationStarted) {
+      return res.status(404).json({
+        isSuccess: false,
+        message:
+          "Participation in auction is only possible after elimination stated!!",
+      });
+    }
+    const response = await Coupon.updateOne(
+      { _id: id },
+      {
+        $set: {
+          auction: true,
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Your card is in auction.Please update the auction details",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Something went wrong while auction participation !!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// Function to get the user Auction details
+async function getUserAuctionCoupons(req, res) {
+  try {
+    const { id } = req.headers;
+    const userData = await User.findOne({ _id: id }).populate({
+      path: "coupons.couponId",
+      populate: {
+        path: "couponCard",
+        model: "Card",
+      },
+    });
+
+    const auctionData = userData.coupons.filter((coupon) => {
+      return (
+        coupon?.couponId?.status &&
+        coupon?.couponId?.auction &&
+        !coupon?.couponId?.couponCard?.completed
+      );
+    });
+    return res.status(200).json({
+      isSuccess: true,
+      message: "Auction coupon details fetched successfully",
+      auctionData,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function to start the auction by user
+async function startAuction(req, res) {
+  try {
+    const { userId, couponId, price, date } = req.body;
+    const couponData = await Coupon.findOne({
+      _id: couponId,
+      status: true,
+      auction: true,
+    });
+    console.log(couponData, "data");
+    if (!couponData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while fetching the coupon data!!",
+      });
+    }
+    const response = await Coupon.updateOne(
+      {
+        _id: couponId,
+      },
+      {
+        $set: {
+          auctionDetails: {
+            auction_user: userId,
+            auction_price: price,
+            auction_date: date,
+          },
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "The coupon is ready for auction.",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while starting auction!!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -834,4 +1001,8 @@ module.exports = {
   checkMobileAndGetOtp,
   verifyMobileOtp,
   changePasswordWithMobile,
+  getUserCoupons,
+  makeCouponForAuction,
+  getUserAuctionCoupons,
+  startAuction,
 };

@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const cardSchema = new mongoose.Schema(
   {
+    id: {
+      type: Number,
+    },
     name: {
       type: String,
       required: true,
@@ -52,10 +55,14 @@ const cardSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    winnerCoupon:{
+    winnerCoupon: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Coupon",
-    }
+    },
+    isStarted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

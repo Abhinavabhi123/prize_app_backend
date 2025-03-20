@@ -22,6 +22,10 @@ const {
   checkMobileAndGetOtp,
   verifyMobileOtp,
   changePasswordWithMobile,
+  getUserCoupons,
+  makeCouponForAuction,
+  getUserAuctionCoupons,
+  startAuction,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -116,6 +120,27 @@ router.get(
   handleValidationErrors,
   verifyMobileOtp
 );
+router.get(
+  "/getUserCoupons",
+  authenticate,
+  userValidate.getUserCoupons,
+  handleValidationErrors,
+  getUserCoupons
+);
+router.get(
+  "/makeCouponForAuction",
+  authenticate,
+  userValidate.makeCouponForAuction,
+  handleValidationErrors,
+  makeCouponForAuction
+);
+router.get(
+  "/getUserAuctionCoupons",
+  authenticate,
+  userValidate.auctionData,
+  handleValidationErrors,
+  getUserAuctionCoupons
+);
 
 // !post methods
 router.post("/googleAuth", GoogleAuth);
@@ -152,12 +177,21 @@ router.post(
   handleValidationErrors,
   changePasswordWithMobile
 );
+
 // !put methods
 router.put(
   "/updateMobileNumber",
   userValidate.updateMobileNumber,
   handleValidationErrors,
   updateMobileNumber
+);
+
+router.patch(
+  "/startAuction",
+  authenticate,
+  userValidate.startAuction,
+  handleValidationErrors,
+  startAuction
 );
 
 module.exports = router;

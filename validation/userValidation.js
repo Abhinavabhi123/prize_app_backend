@@ -220,5 +220,16 @@ const userValidation = {
       .withMessage("Mobile number must contain only numbers"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
+  getUserCoupons: [header("id").notEmpty().withMessage("User id is required")],
+  makeCouponForAuction: [
+    header("id").notEmpty().withMessage("Coupon id is required"),
+  ],
+  auctionData: [header("id").notEmpty().withMessage("User id is required")],
+  startAuction: [
+    body("userId").notEmpty().withMessage("User id is required"),
+    body("couponId").notEmpty().withMessage("CouponId id is required"),
+    body("price").notEmpty().withMessage("Price id is required"),
+    body("date").notEmpty().withMessage("Date is required"),
+  ],
 };
 module.exports = userValidation;

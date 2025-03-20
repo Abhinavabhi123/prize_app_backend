@@ -11,6 +11,7 @@ const Users = require("../models/userModel");
 const Coupons = require("../models/couponModel");
 const scheduleEliminations = require("../utils/eliminationScheduler");
 const schedulePickWinner = require("../utils/pickWinnerScheduler");
+const scheduleLuckyDrawStart = require("../utils/startLuckyDrawScheduler");
 
 const saltValue = 10;
 
@@ -193,6 +194,7 @@ async function postCardDetails(req, res) {
       image: cardImageId,
       eliminationStages: sortedData,
       isEliminationStarted: false,
+      id: cardDetails.length + 1,
     }).then(() => {
       return res.status(200).json({
         isSuccess: true,
@@ -214,12 +216,24 @@ async function getCards(req, res) {
   try {
     const response = await Cards.find({ isDelete: false })
       .populate("image")
+      .populate({ path: "winnerCoupon", populate: { path: "userId" } })
       .sort({ createdAt: -1 });
+    const modifiedResponse = await Promise.all(
+      response.map(async (card) => {
+        const couponCount = await Coupons.countDocuments({
+          couponCard: card._id,
+        });
+        return {
+          ...card.toObject(),
+          couponCount,
+        };
+      })
+    );
     if (response) {
       return res.status(200).json({
         isSuccess: true,
         message: "Cards fetched Successfully",
-        data: response,
+        data: modifiedResponse,
       });
     }
   } catch (error) {
@@ -270,6 +284,15 @@ async function activateCard(req, res) {
         message: "Issue while fetching the card details!!",
       });
     }
+    const currentDate = new Date();
+    const startDate = new Date(cardData.startDate);
+
+    if (currentDate > startDate) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Card Activation Failed,The start date has already passed.",
+      });
+    }
     const cards = await Cards.countDocuments({
       status: true,
       isDelete: false,
@@ -290,16 +313,15 @@ async function activateCard(req, res) {
         { _id: cardid },
         { $set: { status: true } }
       );
+      scheduleLuckyDrawStart();
+      scheduleEliminations();
+      schedulePickWinner();
       if (response && response.modifiedCount === 1) {
-        scheduleEliminations();
-        schedulePickWinner();
         return res.status(200).json({
           isSuccess: true,
           message: "Card status changed successfully",
         });
       } else {
-        scheduleEliminations();
-        schedulePickWinner();
         return res.status(404).json({
           isSuccess: false,
           message: "Issue while changing card status",
@@ -560,13 +582,19 @@ async function editCardDetails(req, res) {
       endDate,
       startDate,
       cardImageId,
+      eliminationStages,
     } = req.body;
-    console.log(req.body, "body");
     const cardData = await Cards.findOne({ _id: cardid });
     if (!cardData) {
       return res.status(200).json({
         isSuccess: false,
         message: "Issue while fetching card details!!",
+      });
+    }
+    if (cardData.completed === true) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The card is already picked a winner.",
       });
     }
     const response = await Cards.updateOne(
@@ -580,9 +608,13 @@ async function editCardDetails(req, res) {
           priceMoney,
           premium,
           image: cardImageId,
+          eliminationStages,
         },
       }
     );
+    scheduleLuckyDrawStart();
+    scheduleEliminations();
+    schedulePickWinner();
     if (response.modifiedCount === 1) {
       return res.status(200).json({
         isSuccess: true,
@@ -629,12 +661,20 @@ async function getDashboardData(req, res) {
       .sort({ couponCount: -1 })
       .limit(7);
 
-    const userArtData = await Users.find(
-      {},
-      { name: 1, picture: 1, purchasedArts: 1 }
-    )
-      .sort({ purchasedArts: -1 })
-      .limit(7);
+    const userArtData = await Users.aggregate([
+      {
+        $project: {
+          name: 1,
+          picture: 1,
+          purchasedArts: 1,
+          totalArtsOwned: { $sum: "$purchasedArts.count" },
+        },
+      },
+      { $sort: { totalArtsOwned: -1 } },
+      { $limit: 7 },
+    ]);
+
+    console.log(userArtData, "userArtData");
     const users = await Users.countDocuments();
     const completedCards = await Cards.countDocuments({ completed: true });
     const arts = await Arts.countDocuments({ isDelete: false });
@@ -680,16 +720,15 @@ async function inactivateCard(req, res) {
       { _id: cardid },
       { $set: { status: false } }
     );
+    scheduleLuckyDrawStart();
+    scheduleEliminations();
+    schedulePickWinner();
     if (response && response.modifiedCount === 1) {
-      scheduleEliminations();
-      schedulePickWinner();
       return res.status(200).json({
         isSuccess: true,
         message: "Card status changed successfully",
       });
     } else {
-      scheduleEliminations();
-      schedulePickWinner();
       return res.status(404).json({
         isSuccess: false,
         message: "Issue while changing card status",

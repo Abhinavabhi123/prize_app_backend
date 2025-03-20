@@ -8,14 +8,12 @@ async function schedulePickWinner() {
       isDelete: false,
       status: true,
       isEliminationStarted: true,
+      completed: false,
       eliminationStages: {
         $not: { $elemMatch: { status: false } },
       },
     });
-
     activeCards.forEach((card) => {
-      console.log("card for next winner picker", card);
-
       const pickerDate = new Date(card.endDate);
       if (pickerDate > new Date()) {
         schedule.scheduleJob(pickerDate, async function () {
@@ -25,11 +23,17 @@ async function schedulePickWinner() {
             couponCard: card._id,
             status: true,
           });
+
           if (remainingCoupons.length === 0) {
             console.log("⚠️ No active coupons left to pick a winner.");
+            await Cards.findByIdAndUpdate(card._id, {
+              $set: { completed: true },
+            });
             return;
           }
+
           const shuffledCoupons = [...remainingCoupons];
+
           for (let i = shuffledCoupons.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffledCoupons[i], shuffledCoupons[j]] = [
@@ -37,15 +41,17 @@ async function schedulePickWinner() {
               shuffledCoupons[i],
             ];
           }
+
           const winnerCoupon = shuffledCoupons[0];
           if (!winnerCoupon) {
             console.log("⚠️ No coupon available for selection.");
             return;
           }
           // Update all non-winner coupons to `status: false`
+          // _id: { $ne: winnerCoupon._id }
           await Coupon.updateMany(
-            { couponCard: card._id, _id: { $ne: winnerCoupon._id } }, // Exclude the winner
-            { $set: { status: false } }
+            { couponCard: card._id },
+            { $set: { status: false, auction: false } }
           ).then(async () => {
             await Cards.findByIdAndUpdate(card._id, {
               $set: { winnerCoupon: winnerCoupon._id, completed: true },

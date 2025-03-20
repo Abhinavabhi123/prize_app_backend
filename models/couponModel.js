@@ -6,9 +6,9 @@ const couponSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Card",
     },
-    couponCode: {
-      type: String,
-    },
+    // couponCode: {
+    //   type: String,
+    // },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -21,9 +21,13 @@ const couponSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    auction: {
+      type: Boolean,
+      default: false,
+    },
     auctionDetails: {
       auction_user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      auction_date: { type: Date },
+      auction_date: { type: String },
       auction_price: { type: Number },
     },
   },

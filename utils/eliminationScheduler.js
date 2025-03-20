@@ -1,7 +1,7 @@
 const schedule = require("node-schedule");
 const Cards = require("../models/cardModel");
 // const User = require("./models/User"); //
-const Coupon =require("../models/couponModel");
+const Coupon = require("../models/couponModel");
 const schedulePickWinner = require("./pickWinnerScheduler");
 
 async function scheduleEliminations() {
@@ -9,11 +9,11 @@ async function scheduleEliminations() {
     const activeCards = await Cards.find({
       isDelete: false,
       status: true,
+      completed:false,
     });
     activeCards.forEach((card) => {
       card.eliminationStages.forEach((stage) => {
         const stageDate = new Date(stage.stageDate);
-
         if (stageDate > new Date()) {
           schedule.scheduleJob(stageDate, async function () {
             console.log(
@@ -36,12 +36,16 @@ async function scheduleEliminations() {
               status: true,
             });
             if (activeCoupons.length === 0) {
+              schedulePickWinner();
               console.log("No active coupons left.");
               return;
             }
-            const eliminationCount = Math.ceil(
-              activeCoupons.length / updatedCard.eliminationStages.length
-            );
+            const eliminationCount =
+              activeCoupons.length > 1
+                ? Math.ceil(
+                    activeCoupons.length / updatedCard.eliminationStages.length
+                  )
+                : 0;
             // Randomly select coupons to eliminate
             const shuffledCoupons = activeCoupons.sort(
               () => Math.random() - 0.5
@@ -50,12 +54,14 @@ async function scheduleEliminations() {
               0,
               eliminationCount
             );
-            const eliminatedCouponIds = couponsToEliminate.map((coupon) => coupon._id);
+            const eliminatedCouponIds = couponsToEliminate.map(
+              (coupon) => coupon._id
+            );
             await Coupon.updateMany(
               { _id: { $in: eliminatedCouponIds } },
-              { $set: { status: false } }
+              { $set: { status: false,auction:false } }
             );
-            schedulePickWinner()
+            schedulePickWinner();
             console.log(`Elimination completed for card: ${card.name}`);
           });
         }
