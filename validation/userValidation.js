@@ -231,5 +231,6 @@ const userValidation = {
     body("price").notEmpty().withMessage("Price id is required"),
     body("date").notEmpty().withMessage("Date is required"),
   ],
+  getAllAuctions: [header("userid").notEmpty().withMessage("User id is required")],
 };
 module.exports = userValidation;

@@ -9,7 +9,7 @@ async function scheduleEliminations() {
     const activeCards = await Cards.find({
       isDelete: false,
       status: true,
-      completed:false,
+      completed: false,
     });
     activeCards.forEach((card) => {
       card.eliminationStages.forEach((stage) => {
@@ -50,6 +50,52 @@ async function scheduleEliminations() {
             const shuffledCoupons = activeCoupons.sort(
               () => Math.random() - 0.5
             );
+            // 5. Ensure auctioned coupons have correct ownership before elimination
+            for (const coupon of shuffledCoupons) {
+              if (coupon.auction && coupon.auctionDetails?.auction_user) {
+                const newOwner = coupon.auctionDetails.auction_user;
+                const realOwner = coupon.userId;
+                const auctionPrice = coupon.auctionDetails.auction_price;
+
+                if (String(newOwner) !== String(realOwner)) {
+                  console.log(
+                    `Updating ownership of coupon ${coupon._id} from ${realOwner} to ${newOwner}`
+                  );
+                  // Transfer auction price from new owner to real owner
+                  await User.updateOne(
+                    { _id: newOwner },
+                    { $inc: { pendingWalletAmount: -auctionPrice } }
+                  );
+                  await User.updateOne(
+                    { _id: realOwner },
+                    { $inc: { wallet: auctionPrice } }
+                  );
+                  // Remove from old owner's list
+                  await User.updateOne(
+                    { _id: realOwner },
+                    { $pull: { coupons: coupon._id } }
+                  );
+
+                  // Add to new owner's list
+                  await User.updateOne(
+                    { _id: newOwner },
+                    { $push: { coupons: coupon._id } }
+                  );
+
+                  // Update ownership in coupon
+                  await Coupon.updateOne(
+                    { _id: coupon._id },
+                    {
+                      $set: {
+                        userId: newOwner,
+                        auction: false,
+                        auctionDetails: null,
+                      },
+                    }
+                  );
+                }
+              }
+            }
             const couponsToEliminate = shuffledCoupons.slice(
               0,
               eliminationCount
@@ -59,7 +105,7 @@ async function scheduleEliminations() {
             );
             await Coupon.updateMany(
               { _id: { $in: eliminatedCouponIds } },
-              { $set: { status: false,auction:false } }
+              { $set: { status: false, auction: false } }
             );
             schedulePickWinner();
             console.log(`Elimination completed for card: ${card.name}`);

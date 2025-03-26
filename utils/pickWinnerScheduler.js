@@ -56,6 +56,21 @@ async function schedulePickWinner() {
             await Cards.findByIdAndUpdate(card._id, {
               $set: { winnerCoupon: winnerCoupon._id, completed: true },
             });
+            const winnerUser = await User.findById(winnerCoupon.userId);
+            if (winnerUser) {
+              const prizeAmount = card.prizeAmount || 0; // Set a prize amount field in your `Cards` model
+
+              await User.updateOne(
+                { _id: winnerUser._id },
+                { $inc: { wallet: prizeAmount } } // Add prize to wallet
+              );
+
+              console.log(
+                `🎉 Prize of ${prizeAmount} awarded to user ${winnerUser._id}`
+              );
+            } else {
+              console.log("⚠️ Winner user not found.");
+            }
           });
         });
       }

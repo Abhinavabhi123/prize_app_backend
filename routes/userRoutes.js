@@ -26,6 +26,7 @@ const {
   makeCouponForAuction,
   getUserAuctionCoupons,
   startAuction,
+  getAllAuctions,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -141,6 +142,13 @@ router.get(
   handleValidationErrors,
   getUserAuctionCoupons
 );
+router.get(
+  "/getAllAuctions",
+  authenticate,
+  userValidate.getAllAuctions,
+  handleValidationErrors,
+  getAllAuctions
+);
 
 // !post methods
 router.post("/googleAuth", GoogleAuth);
@@ -186,7 +194,7 @@ router.put(
   updateMobileNumber
 );
 
-router.patch(
+router.put(
   "/startAuction",
   authenticate,
   userValidate.startAuction,

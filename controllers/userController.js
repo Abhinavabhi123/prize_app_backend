@@ -980,6 +980,37 @@ async function startAuction(req, res) {
   }
 }
 
+// function to get all the available auctions
+async function getAllAuctions(req, res) {
+  try {
+    const { userid } = req.headers;
+    console.log(userid,"userid");
+    
+    const couponData = await Coupon.find({
+      status: true,
+      auction: true,
+    }).populate("couponCard");
+    const auctionData = couponData.filter(
+      (coupon) =>{
+        console.log(coupon.userId !== userid,"coupon.userId !== userid")
+       return coupon.auctionDetails.auction_price &&
+        !coupon.couponCard.completed &&
+        String(coupon.userId) !== String(userid) }
+    );
+    res.status(200).json({
+      isSuccess: true,
+      message: "Auction details fetched successfully.",
+      auctionData,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -1005,4 +1036,5 @@ module.exports = {
   makeCouponForAuction,
   getUserAuctionCoupons,
   startAuction,
+  getAllAuctions,
 };
