@@ -223,6 +223,7 @@ async function getCards(req, res) {
         const couponCount = await Coupons.countDocuments({
           couponCard: card._id,
         });
+        
         return {
           ...card.toObject(),
           couponCount,
@@ -658,7 +659,7 @@ async function getDashboardData(req, res) {
       {},
       { name: 1, picture: 1, coupons: 1, total_amount: 1 }
     )
-      .sort({ couponCount: -1 })
+      .sort({ coupons: -1 })
       .limit(7);
 
     const userArtData = await Users.aggregate([
@@ -674,7 +675,7 @@ async function getDashboardData(req, res) {
       { $limit: 7 },
     ]);
 
-    console.log(userArtData, "userArtData");
+    console.log(userData, "userData");
     const users = await Users.countDocuments();
     const completedCards = await Cards.countDocuments({ completed: true });
     const arts = await Arts.countDocuments({ isDelete: false });

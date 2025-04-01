@@ -1,6 +1,6 @@
 const schedule = require("node-schedule");
 const Cards = require("../models/cardModel");
-// const User = require("./models/User"); //
+const User = require("../models/userModel"); 
 const Coupon = require("../models/couponModel");
 const schedulePickWinner = require("./pickWinnerScheduler");
 

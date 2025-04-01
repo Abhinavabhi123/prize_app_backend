@@ -193,7 +193,7 @@ async function getGamesAndArts(req, res) {
     const now = new Date();
     let artData = [];
     const nextCard = cardData
-      .filter((draw) => draw.startDate > now)
+      .filter((draw) => new Date(draw.startDate) > now)
       .sort((a, b) => a.startDate - b.startDate)[0];
     if (cardData.length > 0) {
       artData = await Arts.find({ status: true, isDelete: false })
@@ -202,7 +202,6 @@ async function getGamesAndArts(req, res) {
         })
         .limit(cardData.length);
     }
-
     return res.status(200).send({
       isSuccess: true,
       message: "Card and art data fetched successfully",
@@ -984,19 +983,20 @@ async function startAuction(req, res) {
 async function getAllAuctions(req, res) {
   try {
     const { userid } = req.headers;
-    console.log(userid,"userid");
-    
+    console.log(userid, "userid");
+
     const couponData = await Coupon.find({
       status: true,
       auction: true,
     }).populate("couponCard");
-    const auctionData = couponData.filter(
-      (coupon) =>{
-        console.log(coupon.userId !== userid,"coupon.userId !== userid")
-       return coupon.auctionDetails.auction_price &&
+    const auctionData = couponData.filter((coupon) => {
+      console.log(coupon.userId !== userid, "coupon.userId !== userid");
+      return (
+        coupon.auctionDetails.auction_price &&
         !coupon.couponCard.completed &&
-        String(coupon.userId) !== String(userid) }
-    );
+        String(coupon.userId) !== String(userid)
+      );
+    });
     res.status(200).json({
       isSuccess: true,
       message: "Auction details fetched successfully.",

@@ -1,6 +1,7 @@
 const schedule = require("node-schedule");
 const Cards = require("../models/cardModel");
 const Coupon = require("../models/couponModel");
+const User  = require("../models/userModel");
 
 async function schedulePickWinner() {
   try {

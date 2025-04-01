@@ -2,9 +2,8 @@ const socketIO = require("socket.io");
 const Coupon = require("./models/couponModel");
 const User = require("./models/userModel");
 
-
 const auctionTimers = {}; // Track auction timers
-const auctionEndTimes = {}; 
+const auctionEndTimes = {};
 
 function initializeSocket(server) {
   const io = socketIO(server, {
@@ -46,16 +45,16 @@ function initializeSocket(server) {
         if (
           String(coupon.auctionDetails.auction_user) !== String(coupon.userId)
         ) {
-          console.log("price return")
+          console.log("price return");
           await User.updateOne(
             { _id: coupon.auctionDetails.auction_user },
             {
-              $inc: { 
+              $inc: {
                 wallet: coupon.auctionDetails.auction_price,
-                pendingWalletAmount: -coupon.auctionDetails.auction_price
-              }
+                pendingWalletAmount: -coupon.auctionDetails.auction_price,
+              },
             }
-          );          
+          );
         }
 
         // Deduct bid amount from user wallet
@@ -79,11 +78,11 @@ function initializeSocket(server) {
         });
         // Clear previous timers
         if (auctionTimers[couponId]) {
-          io.emit("clearTimer")
+          io.emit("clearTimer");
           clearTimeout(auctionTimers[couponId]);
         }
         if (auctionEndTimes[couponId]) {
-          io.emit("clearTimer")
+          io.emit("clearTimer");
           clearTimeout(auctionEndTimes[couponId]); // Clears the countdown timer
         }
 
@@ -96,7 +95,10 @@ function initializeSocket(server) {
 
           // Broadcast timer updates
           const intervalId = setInterval(() => {
-            const remainingTime = Math.max(0, auctionEndTimes[couponId] - Date.now());
+            const remainingTime = Math.max(
+              0,
+              auctionEndTimes[couponId] - Date.now()
+            );
             io.emit("timerUpdate", { couponId, remainingTime });
 
             if (remainingTime <= 0) {
@@ -105,7 +107,6 @@ function initializeSocket(server) {
             }
           }, 1000);
         }, 1 * 60 * 1000); // Start countdown after 1 minute
-
       } catch (error) {
         console.error("Error placing bid:", error);
         socket.emit("bidError", {
@@ -113,6 +114,7 @@ function initializeSocket(server) {
         });
       }
     });
+
     socket.on("disconnect", () => {
       console.log("A user disconnected:", socket.id);
     });
@@ -132,25 +134,28 @@ async function endAuction(couponId, io) {
     // Update the user's pending wallet balance
     await User.updateOne(
       { _id: newOwner },
-      { $inc: { pendingWalletAmount: -coupon.auctionDetails.auction_price } }
+      {
+        $inc: { pendingWalletAmount: -coupon.auctionDetails.auction_price },
+        $push: { coupons: { couponId } },
+      }
     );
 
+
     // Remove the coupon from the previous owner's list
-    await User.updateOne(
+    const response =await User.updateOne(
       { _id: realOwner },
-      { $pull: { coupons: couponId } } // <-- This correctly removes the coupon from the user's list
+      {
+        $pull: { coupons: {couponId} }, // Remove the coupon from the user's list
+        $inc: { wallet: coupon.auctionDetails.auction_price }, // Increment pendingWalletAmount
+      }
     );
-    
-    // Add the coupon to the new owner's list
-    await User.updateOne(
-      { _id: newOwner },
-      { $push: { coupons: {couponId} } }
-    );
+
+    console.log(response,"res")
 
     // Transfer ownership and end auction
     coupon.userId = newOwner;
     coupon.auction = false;
-    coupon.auctionDetails = null; 
+    coupon.auctionDetails = null;
 
     await coupon.save();
 
@@ -162,7 +167,5 @@ async function endAuction(couponId, io) {
     console.error("Error ending auction:", error);
   }
 }
-
-
 
 module.exports = initializeSocket;
