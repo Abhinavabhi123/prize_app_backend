@@ -1010,7 +1010,39 @@ async function getAllAuctions(req, res) {
     });
   }
 }
+// function to change user name
+async function changeUserName(req, res) {
+  try {
+    const { name } = req.headers;
+    const userId = req.user.id;
 
+    const userData = await User.findOne({ _id: userId });
+    if (!userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "User not found!!",
+      });
+    }
+    const response = await User.updateOne({ _id: userId }, { $set: { name: name } });
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "User name changed successfully!",
+      });
+    } else {
+      return res.status(400).json({
+        isSuccess: false,
+        message: "User name change failed!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -1037,4 +1069,5 @@ module.exports = {
   getUserAuctionCoupons,
   startAuction,
   getAllAuctions,
+  changeUserName,
 };

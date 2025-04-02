@@ -232,5 +232,6 @@ const userValidation = {
     body("date").notEmpty().withMessage("Date is required"),
   ],
   getAllAuctions: [header("userid").notEmpty().withMessage("User id is required")],
+  changeUserName: [header("name").notEmpty().withMessage("User name is required")],
 };
 module.exports = userValidation;

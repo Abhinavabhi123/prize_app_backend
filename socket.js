@@ -79,22 +79,26 @@ function initializeSocket(server) {
         // Clear previous timers
         if (auctionTimers[couponId]) {
           io.emit("clearTimer");
-          clearTimeout(auctionTimers[couponId]);
+          clearTimeout(auctionTimers[couponId].timeout);
+          clearTimeout(auctionTimers[couponId].interval);
+          delete  auctionTimers[couponId];
         }
         if (auctionEndTimes[couponId]) {
           io.emit("clearTimer");
           clearTimeout(auctionEndTimes[couponId]); // Clears the countdown timer
         }
+        auctionEndTimes[couponId] = {};
+        auctionTimers[couponId] = {};
 
         // Wait 1 minute before starting the 3-minute countdown
-        auctionTimers[couponId] = setTimeout(() => {
+        auctionTimers[couponId].timeout = setTimeout(() => {
           const auctionEndTime = Date.now() + 3 * 60 * 1000;
           auctionEndTimes[couponId] = auctionEndTime;
 
           console.log(`3-minute auction started for coupon ${couponId}`);
 
           // Broadcast timer updates
-          const intervalId = setInterval(() => {
+          auctionTimers[couponId].interval  = setInterval(() => {
             const remainingTime = Math.max(
               0,
               auctionEndTimes[couponId] - Date.now()
@@ -102,11 +106,14 @@ function initializeSocket(server) {
             io.emit("timerUpdate", { couponId, remainingTime });
 
             if (remainingTime <= 0) {
-              clearInterval(intervalId);
+              clearInterval(auctionTimers[couponId].interval);
+              delete auctionTimers[couponId].interval
               endAuction(couponId, io);
             }
           }, 1000);
         }, 1 * 60 * 1000); // Start countdown after 1 minute
+
+       
       } catch (error) {
         console.error("Error placing bid:", error);
         socket.emit("bidError", {
@@ -140,17 +147,14 @@ async function endAuction(couponId, io) {
       }
     );
 
-
     // Remove the coupon from the previous owner's list
-    const response =await User.updateOne(
+    await User.updateOne(
       { _id: realOwner },
       {
-        $pull: { coupons: {couponId} }, // Remove the coupon from the user's list
+        $pull: { coupons: { couponId } }, // Remove the coupon from the user's list
         $inc: { wallet: coupon.auctionDetails.auction_price }, // Increment pendingWalletAmount
       }
     );
-
-    console.log(response,"res")
 
     // Transfer ownership and end auction
     coupon.userId = newOwner;

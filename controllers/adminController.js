@@ -598,6 +598,11 @@ async function editCardDetails(req, res) {
         message: "The card is already picked a winner.",
       });
     }
+      // code to sort elimination stages with date if the date is shuffled
+      const sortedData = eliminationStages.sort(
+        (a, b) => new Date(a.stageDate) - new Date(b.stageDate)
+      );
+  
     const response = await Cards.updateOne(
       { _id: cardid },
       {
@@ -609,7 +614,7 @@ async function editCardDetails(req, res) {
           priceMoney,
           premium,
           image: cardImageId,
-          eliminationStages,
+          eliminationStages:sortedData,
         },
       }
     );

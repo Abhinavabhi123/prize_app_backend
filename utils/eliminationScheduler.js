@@ -1,6 +1,6 @@
 const schedule = require("node-schedule");
 const Cards = require("../models/cardModel");
-const User = require("../models/userModel"); 
+const User = require("../models/userModel");
 const Coupon = require("../models/couponModel");
 const schedulePickWinner = require("./pickWinnerScheduler");
 
@@ -64,22 +64,17 @@ async function scheduleEliminations() {
                   // Transfer auction price from new owner to real owner
                   await User.updateOne(
                     { _id: newOwner },
-                    { $inc: { pendingWalletAmount: -auctionPrice } }
+                    {
+                      $inc: { pendingWalletAmount: -auctionPrice },
+                      $push: { coupons: { couponId: coupon._id } },
+                    }
                   );
                   await User.updateOne(
                     { _id: realOwner },
-                    { $inc: { wallet: auctionPrice } }
-                  );
-                  // Remove from old owner's list
-                  await User.updateOne(
-                    { _id: realOwner },
-                    { $pull: { coupons: coupon._id } }
-                  );
-
-                  // Add to new owner's list
-                  await User.updateOne(
-                    { _id: newOwner },
-                    { $push: { coupons: coupon._id } }
+                    {
+                      $inc: { wallet: auctionPrice },
+                      $pull: { coupons: { couponId: coupon._id } },
+                    }
                   );
 
                   // Update ownership in coupon

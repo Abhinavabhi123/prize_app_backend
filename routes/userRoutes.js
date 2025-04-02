@@ -27,6 +27,7 @@ const {
   getUserAuctionCoupons,
   startAuction,
   getAllAuctions,
+  changeUserName,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -148,6 +149,13 @@ router.get(
   userValidate.getAllAuctions,
   handleValidationErrors,
   getAllAuctions
+);
+router.get(
+  "/changeUserName",
+  authenticate,
+  userValidate.changeUserName,
+  handleValidationErrors,
+  changeUserName
 );
 
 // !post methods
