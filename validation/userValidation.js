@@ -231,7 +231,36 @@ const userValidation = {
     body("price").notEmpty().withMessage("Price id is required"),
     body("date").notEmpty().withMessage("Date is required"),
   ],
-  getAllAuctions: [header("userid").notEmpty().withMessage("User id is required")],
-  changeUserName: [header("name").notEmpty().withMessage("User name is required")],
+  getAllAuctions: [
+    header("userid").notEmpty().withMessage("User id is required"),
+  ],
+  changeUserName: [
+    header("name").notEmpty().withMessage("User name is required"),
+  ],
+  updateUserDetails: [
+    body("location")
+      .trim()
+      .notEmpty()
+      .withMessage("Location is required")
+      .isLength({ min: 2 })
+      .withMessage("Location must be at least 2 characters"),
+    body("age")
+      .notEmpty()
+      .withMessage("Age is required")
+      .isInt({ min: 1, max: 99 })
+      .withMessage("Age must be a number between 1 and 99"),
+
+    body("gender")
+      .notEmpty()
+      .withMessage("Gender is required")
+      .isIn(["male", "female", "others"])
+      .withMessage("Gender must be male, female, or others"),
+
+    body("id")
+      .notEmpty()
+      .withMessage("ID is required")
+      .isMongoId()
+      .withMessage("Invalid ID format"),
+  ],
 };
 module.exports = userValidation;

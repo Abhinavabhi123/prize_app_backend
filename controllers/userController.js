@@ -1023,7 +1023,10 @@ async function changeUserName(req, res) {
         message: "User not found!!",
       });
     }
-    const response = await User.updateOne({ _id: userId }, { $set: { name: name } });
+    const response = await User.updateOne(
+      { _id: userId },
+      { $set: { name: name } }
+    );
     if (response.modifiedCount === 1) {
       return res.status(200).json({
         isSuccess: true,
@@ -1043,6 +1046,42 @@ async function changeUserName(req, res) {
     });
   }
 }
+// function to update the user details
+async function updateUserDetails(req, res) {
+  try {
+    const { id, location, age, gender } = req.body;
+    console.log(req.body);
+    const userData = await User.findOne({ _id: id });
+    if (!userData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "User not found!, Please try again after sometime!",
+      });
+    }
+    const response = await User.updateOne(
+      { _id: id },
+      { $set: { location, age, gender } }
+    );
+    if (response.modifiedCount === 1) {
+      return res.status(200).json({
+        isSuccess: true,
+        message: "Details updated Successfully",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while update user details!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -1070,4 +1109,5 @@ module.exports = {
   startAuction,
   getAllAuctions,
   changeUserName,
+  updateUserDetails,
 };

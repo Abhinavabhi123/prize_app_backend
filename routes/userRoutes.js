@@ -28,6 +28,7 @@ const {
   startAuction,
   getAllAuctions,
   changeUserName,
+  updateUserDetails,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -192,6 +193,13 @@ router.post(
   userValidate.changePasswordWithMobile,
   handleValidationErrors,
   changePasswordWithMobile
+);
+router.post(
+  "/updateUserDetails",
+  authenticate,
+  userValidate.updateUserDetails,
+  handleValidationErrors,
+  updateUserDetails
 );
 
 // !put methods

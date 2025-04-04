@@ -62,6 +62,15 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    location: {
+      type: String,
+    },
+    age: {
+      type: Number,
+    },
+    gender: {
+      type: String,
+    },
   },
   {
     timestamps: true,
