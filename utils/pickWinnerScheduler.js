@@ -1,7 +1,7 @@
 const schedule = require("node-schedule");
 const Cards = require("../models/cardModel");
 const Coupon = require("../models/couponModel");
-const User  = require("../models/userModel");
+const User = require("../models/userModel");
 
 async function schedulePickWinner() {
   try {
@@ -53,26 +53,27 @@ async function schedulePickWinner() {
           await Coupon.updateMany(
             { couponCard: card._id },
             { $set: { status: false, auction: false } }
-          ).then(async () => {
-            await Cards.findByIdAndUpdate(card._id, {
-              $set: { winnerCoupon: winnerCoupon._id, completed: true },
-            });
-            const winnerUser = await User.findById(winnerCoupon.userId);
-            if (winnerUser) {
-              const prizeAmount = card.prizeAmount || 0; // Set a prize amount field in your `Cards` model
-
-              await User.updateOne(
-                { _id: winnerUser._id },
-                { $inc: { wallet: prizeAmount } } // Add prize to wallet
-              );
-
-              console.log(
-                `🎉 Prize of ${prizeAmount} awarded to user ${winnerUser._id}`
-              );
-            } else {
-              console.log("⚠️ Winner user not found.");
-            }
+          );
+          await Cards.findByIdAndUpdate(card._id, {
+            $set: { winnerCoupon: winnerCoupon._id, completed: true },
           });
+
+          const winnerUser = await User.findById(winnerCoupon.userId);
+          if (winnerUser) {
+            const prizeAmount = card.priceMoney || 0; // Set a prize amount field in your `Cards` model
+            console.log(winnerUser._id, "got", prizeAmount);
+
+            await User.updateOne(
+              { _id: winnerUser._id },
+              { $inc: { wallet: prizeAmount } } // Add prize to wallet
+            );
+
+            console.log(
+              `🎉 Prize of ${prizeAmount} awarded to user ${winnerUser._id}`
+            );
+          } else {
+            console.log("⚠️ Winner user not found.");
+          }
         });
       }
     });

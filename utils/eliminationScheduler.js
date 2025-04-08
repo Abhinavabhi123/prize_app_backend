@@ -3,6 +3,7 @@ const Cards = require("../models/cardModel");
 const User = require("../models/userModel");
 const Coupon = require("../models/couponModel");
 const schedulePickWinner = require("./pickWinnerScheduler");
+const {getIO}  = require("../socket");
 
 async function scheduleEliminations() {
   try {
@@ -103,6 +104,8 @@ async function scheduleEliminations() {
               { $set: { status: false, auction: false } }
             );
             schedulePickWinner();
+            getIO().emit("resetTimer");
+            getIO().emit("updateAuction");
             console.log(`Elimination completed for card: ${card.name}`);
           });
         }

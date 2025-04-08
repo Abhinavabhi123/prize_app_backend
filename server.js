@@ -15,7 +15,7 @@ const scheduleEliminations = require("./utils/eliminationScheduler");
 const schedulePickWinner = require("./utils/pickWinnerScheduler");
 const scheduleLuckyDrawStart = require("./utils/startLuckyDrawScheduler");
 
-const initializeSocket  = require("./socket");
+const {initializeSocket}  = require("./socket");
 
 const app = express();
 

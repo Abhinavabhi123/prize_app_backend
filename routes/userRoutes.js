@@ -29,6 +29,9 @@ const {
   getAllAuctions,
   changeUserName,
   updateUserDetails,
+  auctionParticipation,
+  couponForAuction,
+  getWinners
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -158,6 +161,15 @@ router.get(
   handleValidationErrors,
   changeUserName
 );
+router.get(
+  "/auctionParticipation",
+  authenticate,
+  userValidate.auctionParticipation,
+  handleValidationErrors,
+  auctionParticipation
+);
+router.get("/couponForAuction", authenticate, couponForAuction);
+router.get("/getWinners",getWinners)
 
 // !post methods
 router.post("/googleAuth", GoogleAuth);

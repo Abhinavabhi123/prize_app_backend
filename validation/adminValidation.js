@@ -34,22 +34,7 @@ const adminValidation = {
       .withMessage("Card ID must be alphanumeric"),
   ],
   createCard: [
-    body("cardName")
-      .trim()
-      .notEmpty()
-      .withMessage("Card name is required")
-      .isLength({ min: 3 })
-      .withMessage("Card name must be at least 3 characters")
-      .isLength({ max: 50 })
-      .withMessage("Card name cannot exceed 50 characters"),
-
-    body("cardId")
-      .trim()
-      .notEmpty()
-      .withMessage("Card ID is required")
-      .matches(/^[A-Za-z0-9_-]+$/)
-      .withMessage("Card ID must be alphanumeric"),
-
+    body("cardName").trim().notEmpty().withMessage("Card name is required"),
     body("priceMoney")
       .notEmpty()
       .withMessage("Price is required")
@@ -166,14 +151,6 @@ const adminValidation = {
       .withMessage("Card name must be at least 3 characters")
       .isLength({ max: 50 })
       .withMessage("Card name cannot exceed 50 characters"),
-
-    body("cardId")
-      .trim()
-      .notEmpty()
-      .withMessage("Card ID is required")
-      .matches(/^[A-Za-z0-9_-]+$/)
-      .withMessage("Card ID must be alphanumeric"),
-
     body("priceMoney")
       .notEmpty()
       .withMessage("Price is required")

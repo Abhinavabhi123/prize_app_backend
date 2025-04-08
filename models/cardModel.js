@@ -6,12 +6,8 @@ const cardSchema = new mongoose.Schema(
       type: Number,
     },
     name: {
-      type: String,
-      required: true,
-    },
-    cardId: {
-      type: String,
-      required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Art",
     },
     startDate: {
       type: String,

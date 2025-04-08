@@ -9,6 +9,8 @@ const Cards = require("../models/cardModel");
 const Arts = require("../models/artModel");
 const Coupon = require("../models/couponModel");
 
+const { getIO } = require("../socket");
+
 const saltValue = 10;
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -186,27 +188,21 @@ async function getGamesAndArts(req, res) {
       status: true,
       isDelete: false,
       isEliminationStarted: false,
-    }).sort({
-      startDate: 1,
-    });
+    })
+      .sort({
+        startDate: 1,
+      })
+      .populate("name");
 
     const now = new Date();
-    let artData = [];
     const nextCard = cardData
       .filter((draw) => new Date(draw.startDate) > now)
       .sort((a, b) => a.startDate - b.startDate)[0];
-    if (cardData.length > 0) {
-      artData = await Arts.find({ status: true, isDelete: false })
-        .sort({
-          price: -1,
-        })
-        .limit(cardData.length);
-    }
+
     return res.status(200).send({
       isSuccess: true,
       message: "Card and art data fetched successfully",
       cardData,
-      artData,
       nextCard: nextCard,
     });
   } catch (error) {
@@ -824,6 +820,10 @@ async function getUserCoupons(req, res) {
       populate: {
         path: "couponCard",
         model: "Card",
+        populate: {
+          path: "name",
+          model: "Art",
+        },
       },
     });
 
@@ -877,6 +877,7 @@ async function makeCouponForAuction(req, res) {
       }
     );
     if (response.modifiedCount === 1) {
+      getIO().emit("updateAuction");
       return res.status(200).json({
         isSuccess: true,
         message: "Your card is in auction.Please update the auction details",
@@ -905,6 +906,10 @@ async function getUserAuctionCoupons(req, res) {
       populate: {
         path: "couponCard",
         model: "Card",
+        populate: {
+          path: "name",
+          model: "Art",
+        },
       },
     });
 
@@ -935,7 +940,7 @@ async function startAuction(req, res) {
     const { userId, couponId, price, date } = req.body;
     const couponData = await Coupon.findOne({
       _id: couponId,
-      status: true,
+      // status: true,
       auction: true,
     });
     console.log(couponData, "data");
@@ -943,6 +948,12 @@ async function startAuction(req, res) {
       return res.status(404).json({
         isSuccess: false,
         message: "Issue while fetching the coupon data!!",
+      });
+    }
+    if (couponData.status === false) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The coupon is eliminated use another coupon for auction",
       });
     }
     const response = await Coupon.updateOne(
@@ -988,7 +999,14 @@ async function getAllAuctions(req, res) {
     const couponData = await Coupon.find({
       status: true,
       auction: true,
-    }).populate("couponCard");
+    }).populate({
+      path: "couponCard",
+      model: "Card",
+      populate: {
+        path: "name",
+        model: "Art",
+      },
+    });
     const auctionData = couponData.filter((coupon) => {
       console.log(coupon.userId !== userid, "coupon.userId !== userid");
       return (
@@ -1082,6 +1100,125 @@ async function updateUserDetails(req, res) {
   }
 }
 
+// function to participate a coupon in the auction using mobile
+async function auctionParticipation(req, res) {
+  try {
+    const { userid, couponid, price } = req.headers;
+    const couponData = await Coupon.findOne({
+      _id: couponid,
+    });
+    if (!couponData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while fetching the coupon data!!",
+      });
+    }
+    if (couponData.status === false) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The coupon is eliminated use another coupon for auction",
+      });
+    }
+    const response = await Coupon.updateOne(
+      {
+        _id: couponid,
+      },
+      {
+        $set: {
+          auctionDetails: {
+            auction_user: userid,
+            auction_price: price,
+            auction_date: new Date().toLocaleString(),
+          },
+          auction: true,
+        },
+      }
+    );
+    if (response.modifiedCount === 1) {
+      getIO().emit("updateAuction");
+      return res.status(200).json({
+        isSuccess: true,
+        message: "The coupon is ready for auction.",
+      });
+    } else {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "Issue while starting auction!!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+// function for getting the coupon for auction for the mobile device
+async function couponForAuction(req, res) {
+  const { id } = req.headers;
+  const userCoupons = await User.findOne(
+    { _id: id },
+    { coupons: 1, _id: 0 }
+  ).populate({
+    path: "coupons.couponId",
+    populate: {
+      path: "couponCard",
+      model: "Card",
+      populate: {
+        path: "name",
+        model: "Art",
+      },
+    },
+  });
+
+  // Filter coupons where auction is false
+  const filteredCoupons = userCoupons.coupons.filter((c) => {
+    return c.couponId.auction === false && c.couponId.status === true;
+  });
+
+  return res.status(200).json({
+    isSuccess: true,
+    message: "Coupon data fetched successfully",
+    data: filteredCoupons,
+  });
+}
+
+// function to fetch winners of the lucky draw
+async function getWinners(req, res) {
+  try {
+    const winners = await Cards.find({
+      completed: true,
+      isDelete: false,
+    })
+    .populate({
+      path: "winnerCoupon",
+      model: "Coupon",
+      populate: {
+        path: "userId",
+        model: "User",
+      },
+    })
+    .populate({
+      path: "name",
+      model: "Art",
+    });
+    
+    res.status(200).json({
+      isSuccess: true,
+      message: "Winner data fetched successfully",
+      winners,
+    });
+  } catch (error) {
+    return res.status(200).json({
+      isSuccess: true,
+      message: "Coupon data fetched successfully",
+      data: filteredCoupons,
+    });
+  }
+}
+
 module.exports = {
   GoogleAuth,
   UserLogin,
@@ -1110,4 +1247,7 @@ module.exports = {
   getAllAuctions,
   changeUserName,
   updateUserDetails,
+  auctionParticipation,
+  couponForAuction,
+  getWinners,
 };

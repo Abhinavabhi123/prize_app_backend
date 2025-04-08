@@ -157,7 +157,6 @@ async function postCardDetails(req, res) {
   try {
     const {
       cardName,
-      cardId,
       startDate,
       endDate,
       priceMoney,
@@ -165,17 +164,18 @@ async function postCardDetails(req, res) {
       cardImageId,
       eliminationStages,
     } = req.body;
+    
 
     let cardDetails = await Cards.find({ isDelete: false });
     if (cardDetails.length > 0) {
       if (
         cardDetails.filter(
-          (card) => card.name === cardName || card.cardId === cardId
+          (card) => card.name === cardName
         ).length > 0
       ) {
         return res.status(404).json({
           isSuccess: false,
-          message: "The card is already stored with name or card Id !!",
+          message: "The card is already stored with name!!",
         });
       }
     }
@@ -186,7 +186,6 @@ async function postCardDetails(req, res) {
 
     await Cards.create({
       name: cardName,
-      cardId,
       startDate,
       endDate,
       priceMoney,
@@ -217,13 +216,15 @@ async function getCards(req, res) {
     const response = await Cards.find({ isDelete: false })
       .populate("image")
       .populate({ path: "winnerCoupon", populate: { path: "userId" } })
+      .populate("name")
       .sort({ createdAt: -1 });
+      
     const modifiedResponse = await Promise.all(
       response.map(async (card) => {
         const couponCount = await Coupons.countDocuments({
           couponCard: card._id,
         });
-        
+
         return {
           ...card.toObject(),
           couponCount,
@@ -347,6 +348,13 @@ async function postArtDetails(req, res) {
         .status(404)
         .json({ isSuccess: false, message: "Image file is missing" });
     }
+    const artData = await Arts.findOne({ name });
+    if (artData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The art is already exist with the name!",
+      });
+    }
     const response = await Arts.create({
       name,
       price,
@@ -408,6 +416,13 @@ async function editArtDetails(req, res) {
       );
     }
     const { name, description, price, question, answer } = req.body;
+    const artData = await Arts.findOne({ name, _id: { $ne: artid } });
+    if (artData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The art is already exist with the name!",
+      });
+    }
     const response = await Arts.updateOne(
       { _id: artid },
       {
@@ -464,6 +479,13 @@ async function editArtWithImage(req, res) {
       });
     }
     const { name, description, price, question, answer } = req.body;
+    const artData = await Arts.findOne({ name, _id: { $ne: artid } });
+    if (artData) {
+      return res.status(404).json({
+        isSuccess: false,
+        message: "The art is already exist with the name!",
+      });
+    }
     const response = await Arts.updateOne(
       { _id: artid },
       {
@@ -577,7 +599,6 @@ async function editCardDetails(req, res) {
     const { cardid } = req.headers;
     const {
       cardName,
-      cardId,
       priceMoney,
       premium,
       endDate,
@@ -598,23 +619,22 @@ async function editCardDetails(req, res) {
         message: "The card is already picked a winner.",
       });
     }
-      // code to sort elimination stages with date if the date is shuffled
-      const sortedData = eliminationStages.sort(
-        (a, b) => new Date(a.stageDate) - new Date(b.stageDate)
-      );
-  
+    // code to sort elimination stages with date if the date is shuffled
+    const sortedData = eliminationStages.sort(
+      (a, b) => new Date(a.stageDate) - new Date(b.stageDate)
+    );
+
     const response = await Cards.updateOne(
       { _id: cardid },
       {
         $set: {
           name: cardName,
-          cardId,
           startDate,
           endDate,
           priceMoney,
           premium,
           image: cardImageId,
-          eliminationStages:sortedData,
+          eliminationStages: sortedData,
         },
       }
     );
@@ -680,13 +700,28 @@ async function getDashboardData(req, res) {
       { $limit: 7 },
     ]);
 
-    console.log(userData, "userData");
     const users = await Users.countDocuments();
     const completedCards = await Cards.countDocuments({ completed: true });
     const arts = await Arts.countDocuments({ isDelete: false });
     const coupons = await Coupons.countDocuments();
     const cards = await Cards.countDocuments({ isDelete: false });
-
+    const walletSummary = await Users.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalInvested: { $sum: "$total_amount" },
+          totalWithdrawn: { $sum: "$withDrawAmount" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalInvested: 1,
+          totalWithdrawn: 1
+        }
+      }
+    ]);
+    
     return res.status(200).json({
       isSuccess: true,
       message: "Dashboard data fetched successfully",
@@ -700,6 +735,10 @@ async function getDashboardData(req, res) {
         coupons,
         cards,
       },
+      walletSummary: {
+        totalInvested: walletSummary[0]?.totalInvested || 0,
+        totalWithdrawn: walletSummary[0]?.totalWithdrawn || 0
+      }
     });
   } catch (error) {
     console.log(error);
@@ -749,6 +788,25 @@ async function inactivateCard(req, res) {
   }
 }
 
+// function to get the art data for card creation
+async function getArtForCardCreation(req,res){
+  try {
+    const artData = await Arts.find({status:true,isDelete:false});
+    return res.status(200).json({
+      isSuccess:true,
+      message:"Art data fetched successfully",
+      artData
+    })
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      isSuccess: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+
 module.exports = {
   adminSignUp,
   adminLogin,
@@ -769,4 +827,5 @@ module.exports = {
   getUsers,
   getDashboardData,
   inactivateCard,
+  getArtForCardCreation
 };

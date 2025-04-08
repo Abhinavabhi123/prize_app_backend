@@ -262,5 +262,10 @@ const userValidation = {
       .isMongoId()
       .withMessage("Invalid ID format"),
   ],
+  auctionParticipation:[
+    header("userid").notEmpty().withMessage("User id is required"),
+    header("couponid").notEmpty().withMessage("Coupon id is required"),
+    header("price").notEmpty().withMessage("Price is required"),
+  ]
 };
 module.exports = userValidation;

@@ -21,6 +21,7 @@ const {
   getUsers,
   getDashboardData,
   inactivateCard,
+  getArtForCardCreation
 } = require("../controllers/adminController");
 const authenticate = require("../middleware/authentication");
 const adminValidation = require("../validation/adminValidation");
@@ -65,6 +66,7 @@ router.get("/getCards", authenticate, getCards);
 router.get("/getArts", authenticate, getArts);
 router.get("/getUsers", authenticate, getUsers);
 router.get("/getDashboardData", authenticate, getDashboardData);
+router.get("/getArtForCardCreation",authenticate,getArtForCardCreation)
 
 // !post methods
 router.post(
@@ -135,7 +137,7 @@ router.put(
 );
 
 // !patch methods
-router.patch(
+router.post(
   "/editArtDetails",
   authenticate,
   adminValidation.editArt,
