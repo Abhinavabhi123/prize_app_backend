@@ -164,15 +164,10 @@ async function postCardDetails(req, res) {
       cardImageId,
       eliminationStages,
     } = req.body;
-    
 
     let cardDetails = await Cards.find({ isDelete: false });
     if (cardDetails.length > 0) {
-      if (
-        cardDetails.filter(
-          (card) => card.name === cardName
-        ).length > 0
-      ) {
+      if (cardDetails.filter((card) => card.name === cardName).length > 0) {
         return res.status(404).json({
           isSuccess: false,
           message: "The card is already stored with name!!",
@@ -218,7 +213,7 @@ async function getCards(req, res) {
       .populate({ path: "winnerCoupon", populate: { path: "userId" } })
       .populate("name")
       .sort({ createdAt: -1 });
-      
+
     const modifiedResponse = await Promise.all(
       response.map(async (card) => {
         const couponCount = await Coupons.countDocuments({
@@ -255,6 +250,9 @@ async function deleteCardDetails(req, res) {
       { $set: { isDelete: true, status: false } }
     );
     if (response && response.modifiedCount === 1) {
+      scheduleLuckyDrawStart();
+      scheduleEliminations();
+      schedulePickWinner();
       return res.status(200).json({
         isSuccess: true,
         message: "Card deleted successfully",
@@ -638,10 +636,11 @@ async function editCardDetails(req, res) {
         },
       }
     );
-    scheduleLuckyDrawStart();
-    scheduleEliminations();
-    schedulePickWinner();
+
     if (response.modifiedCount === 1) {
+      scheduleLuckyDrawStart();
+      scheduleEliminations();
+      schedulePickWinner();
       return res.status(200).json({
         isSuccess: true,
         message: "Card details updated successfully ",
@@ -710,18 +709,18 @@ async function getDashboardData(req, res) {
         $group: {
           _id: null,
           totalInvested: { $sum: "$total_amount" },
-          totalWithdrawn: { $sum: "$withDrawAmount" }
-        }
+          totalWithdrawn: { $sum: "$withDrawAmount" },
+        },
       },
       {
         $project: {
           _id: 0,
           totalInvested: 1,
-          totalWithdrawn: 1
-        }
-      }
+          totalWithdrawn: 1,
+        },
+      },
     ]);
-    
+
     return res.status(200).json({
       isSuccess: true,
       message: "Dashboard data fetched successfully",
@@ -737,8 +736,8 @@ async function getDashboardData(req, res) {
       },
       walletSummary: {
         totalInvested: walletSummary[0]?.totalInvested || 0,
-        totalWithdrawn: walletSummary[0]?.totalWithdrawn || 0
-      }
+        totalWithdrawn: walletSummary[0]?.totalWithdrawn || 0,
+      },
     });
   } catch (error) {
     console.log(error);
@@ -789,14 +788,14 @@ async function inactivateCard(req, res) {
 }
 
 // function to get the art data for card creation
-async function getArtForCardCreation(req,res){
+async function getArtForCardCreation(req, res) {
   try {
-    const artData = await Arts.find({status:true,isDelete:false});
+    const artData = await Arts.find({ status: true, isDelete: false });
     return res.status(200).json({
-      isSuccess:true,
-      message:"Art data fetched successfully",
-      artData
-    })
+      isSuccess: true,
+      message: "Art data fetched successfully",
+      artData,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -805,7 +804,6 @@ async function getArtForCardCreation(req,res){
     });
   }
 }
-
 
 module.exports = {
   adminSignUp,
@@ -827,5 +825,5 @@ module.exports = {
   getUsers,
   getDashboardData,
   inactivateCard,
-  getArtForCardCreation
+  getArtForCardCreation,
 };

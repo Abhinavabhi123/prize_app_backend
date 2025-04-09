@@ -75,7 +75,7 @@ function initializeSocket(server) {
 
         // Deduct bid
         user.wallet -= bidAmount + coupon.couponCard.premium;
-        user.pendingWalletAmount -= bidAmount;
+        user.pendingWalletAmount += bidAmount;
         await user.save();
 
         coupon.auctionDetails = {
